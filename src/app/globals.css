@@ -1,0 +1,30 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
+:root {
+  /* OCASA Brand Colors */
+  --color-brand-calypso: #0099A8;
+  --color-brand-teal-dark: #056572;
+  --color-brand-green: #8fbf4c;
+  --color-brand-amber: #ffab40;
+  --color-brand-light: #efefef;
+
+  /* Semantic tokens — light theme */
+  --color-bg-primary: #F5F5F5;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-card: #FFFFFF;
+  --color-accent-cyan: #0099A8;
+  --color-accent-green: #8fbf4c;
+  --color-accent-amber: #ffab40;
+  --color-accent-red: #E53935;
+  --color-text-primary: #1A1A1A;
+  --color-text-muted: #6B7280;
+  --color-border: #E0E0E0;
+
+  --font-family: 'Montserrat', sans-serif;
+}
+body {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-family);
+}

@@ -3,13 +3,13 @@
 ## Stack
 - Framework: Next.js 14+ (App Router, TypeScript)
 - UI/Charts: Tailwind CSS, Recharts, Lucide React
-- Lógica/Data: SWR (fetch), Service Wrappers (Mock -> SQL/Sheets)
+- Lógica/Data: SWR (fetch), Service Wrappers (Google Sheets, datos operativos via n8n)
 - Versión Node: v20+
 
 ## Estructura
 - `/src/app`: Rutas, Layouts y API Handlers (App Router)
 - `/src/components`: Componentes visuales (unidos por `/layout`, `/charts`, `/kpi`, `/tables`)
-- `/src/services`: Wrappers de datos (SQL Service, Sheets Service)
+- `/src/services`: Wrappers de datos (Sheets Service — datos operativos sincronizados por n8n)
 - `/src/lib`: Lógica pura de cálculos financieros y utilidades
 - `/src/types`: Definiciones de TypeScript
 - `/docs/plans`: Documentación de diseño y planes de ejecución
@@ -22,9 +22,9 @@
 - 📋 Dashboard ABC-XYZ: pendiente
 
 ## Variables de Entorno
-- `DATABASE_URL`: (Fase 2) Conexión SQL
-- `GOOGLE_SHEETS_API_KEY`: (Fase 2) API Key para Sheets
-- `GOOGLE_SHEET_ID`: (Fase 2) ID del documento de tarifas/costos
+- `GOOGLE_SHEETS_API_KEY`: API Key para Google Sheets
+- `GOOGLE_SHEET_ID`: ID del documento de tarifas/costos/operaciones
+- SQL Server: conectado via n8n workflow (no directamente desde la app)
 
 ## Comandos
 - Dev: `npm run dev`
@@ -39,7 +39,7 @@ Estas reglas son obligatorias (basadas en "buenas-practicas.md"):
 - **Chesterton's Fence:** Antes de borrar código existente, explicar POR QUÉ existía.
 - **Tokens de diseño:** Usar variables semánticas (CSS variables/Tailwind); evitar magic numbers.
 - **Atomicidad:** Cada cambio debe ser funcional; no dejar TODOs críticos que rompan la app.
-- **Wrappers:** Usar interfaces para dependencias externas (SQL, Sheets) para facilitar cambios.
+- **Wrappers:** Usar interfaces para dependencias externas (Sheets) para facilitar cambios.
 
 ## Contexto de Negocio
 Dashboard para OCASA enfocado en la visualización de la operación de warehouse de electrodomésticos. El objetivo es centralizar métricas de volumen (contenedores, pallets, picking), rentabilidad financiera (venta vs costo), control de merma y análisis de inventario (Matriz ABC-XYZ).
