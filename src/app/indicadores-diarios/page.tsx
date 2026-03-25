@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import useSWR from 'swr';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { KPICard } from '@/components/kpi/KPICard';
 import { SubTabs } from '@/components/indicadores/SubTabs';
 import { PickingTab } from '@/components/indicadores/PickingTab';
@@ -11,6 +10,7 @@ import { MovimientosTab } from '@/components/indicadores/MovimientosTab';
 import { PortonesTab } from '@/components/indicadores/PortonesTab';
 import { ResumenTab } from '@/components/indicadores/ResumenTab';
 import type { IndicadoresDiariosData, IndicadorDiario } from '@/types';
+import { useState } from 'react';
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error('Error fetching data');
@@ -40,7 +40,7 @@ function findByOrg(resumen: IndicadorDiario[], org: string): IndicadorDiario | u
 }
 
 export default function IndicadoresDiariosPage() {
-  const [fecha, setFecha] = useState(todayStr);
+  const fecha = todayStr();
   const [activeTab, setActiveTab] = useState('picking');
 
   const { data, error, isLoading } = useSWR(
@@ -48,12 +48,6 @@ export default function IndicadoresDiariosPage() {
     fetcher,
     { keepPreviousData: true }
   );
-
-  function cambiarFecha(dias: number) {
-    const d = new Date(fecha);
-    d.setDate(d.getDate() + dias);
-    setFecha(d.toISOString().split('T')[0]);
-  }
 
   const resumen = data?.resumen ?? [];
   const movimientos = data?.movimientos ?? [];
@@ -74,28 +68,12 @@ export default function IndicadoresDiariosPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header + Date Navigation */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Indicadores Diarios</h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => cambiarFecha(-1)}
-            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-bg-card)] hover:text-[var(--color-text-primary)] transition-colors"
-            title="Día anterior"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <span className="text-sm font-medium text-[var(--color-text-primary)] min-w-[100px] text-center">
-            {formatFechaDisplay(fecha)}
-          </span>
-          <button
-            onClick={() => cambiarFecha(1)}
-            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-bg-card)] hover:text-[var(--color-text-primary)] transition-colors"
-            title="Día siguiente"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
+        <span className="text-sm font-medium text-[var(--color-text-muted)]">
+          {formatFechaDisplay(fecha)}
+        </span>
       </div>
 
       {/* KPI Cards */}
@@ -107,20 +85,21 @@ export default function IndicadoresDiariosPage() {
           trend="neutral"
         />
         <KPICard
-          label="Pallet In"
-          value={isLoading ? '...' : (total?.pallet_in ?? 0).toLocaleString()}
-          trendValue={`PL2: ${(pl2?.pallet_in ?? 0).toLocaleString()} / PL3: ${(pl3?.pallet_in ?? 0).toLocaleString()}`}
-          trend="neutral"
-        />
-        <KPICard
-          label="Pallet Out"
-          value={isLoading ? '...' : (total?.pallet_out ?? 0).toLocaleString()}
-          trendValue={`PL2: ${(pl2?.pallet_out ?? 0).toLocaleString()} / PL3: ${(pl3?.pallet_out ?? 0).toLocaleString()}`}
+          label="Recepción"
+          value={isLoading ? '...' : (total?.recepcion ?? 0).toLocaleString()}
+          trendValue={`PL2: ${(pl2?.recepcion ?? 0).toLocaleString()} / PL3: ${(pl3?.recepcion ?? 0).toLocaleString()}`}
           trend="neutral"
         />
         <KPICard
           label="Contenedores"
           value={isLoading ? '...' : (total?.contenedores ?? 0).toLocaleString()}
+          trendValue={`PL2: ${(pl2?.contenedores ?? 0).toLocaleString()} / PL3: ${(pl3?.contenedores ?? 0).toLocaleString()}`}
+          trend="neutral"
+        />
+        <KPICard
+          label="Movimientos"
+          value={isLoading ? '...' : (total?.movimientos ?? 0).toLocaleString()}
+          trendValue={`PL2: ${(pl2?.movimientos ?? 0).toLocaleString()} / PL3: ${(pl3?.movimientos ?? 0).toLocaleString()}`}
           trend="neutral"
         />
       </div>

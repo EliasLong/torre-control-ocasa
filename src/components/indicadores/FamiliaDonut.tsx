@@ -29,8 +29,10 @@ const COLORS = [
 
 export function FamiliaDonut({ movimientos }: FamiliaDonutProps) {
   const chartData = useMemo(() => {
-    const pickMoves = movimientos.filter((m) =>
-      m.tipoTransaccion.includes('Sales Order Pick'),
+    const pickMoves = movimientos.filter(
+      (m) =>
+        m.tipoTransaccion.toLowerCase() === 'sales order pick' &&
+        m.subTransferencia === 'PORTONES',
     );
 
     const familyMap = new Map<string, number>();

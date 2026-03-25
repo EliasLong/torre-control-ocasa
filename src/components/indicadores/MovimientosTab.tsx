@@ -18,44 +18,50 @@ interface MovimientosTabProps {
 }
 
 const COLUMNS = [
-  { key: 'fecha', label: 'Fecha' },
   { key: 'articulo', label: 'Artículo' },
   { key: 'descripcion', label: 'Descripción' },
   { key: 'cantidad', label: 'Cantidad', align: 'right' as const },
-  { key: 'tipoTransaccion', label: 'Tipo Transacción' },
   { key: 'subinventario', label: 'Subinventario' },
+  { key: 'localizador', label: 'Localizador' },
   { key: 'usuario', label: 'Usuario' },
+  { key: 'turno', label: 'Turno' },
 ];
 
 export function MovimientosTab({ movimientos }: MovimientosTabProps) {
-  const chartData = useMemo(() => {
-    const typeMap = new Map<string, number>();
-    for (const m of movimientos) {
-      typeMap.set(m.tipoTransaccion, (typeMap.get(m.tipoTransaccion) ?? 0) + Math.abs(m.cantidad));
-    }
-    return Array.from(typeMap.entries())
-      .map(([tipo, cantidad]) => ({ tipo, cantidad }))
-      .sort((a, b) => b.cantidad - a.cantidad);
-  }, [movimientos]);
-
-  const tableData = useMemo(
-    () =>
-      movimientos.map((m) => ({
-        fecha: m.fecha,
-        articulo: m.articulo,
-        descripcion: m.descripcion,
-        cantidad: Math.abs(m.cantidad),
-        tipoTransaccion: m.tipoTransaccion,
-        subinventario: m.subinventario,
-        usuario: m.usuario,
-      })),
+  const transferMoves = useMemo(
+    () => movimientos.filter((m) => m.tipoTransaccion.toLowerCase() === 'subinventory transfer'),
     [movimientos],
   );
 
-  if (!movimientos.length) {
+  const chartData = useMemo(() => {
+    const subMap = new Map<string, number>();
+    for (const m of transferMoves) {
+      const key = m.subinventario || 'SIN SUBINV';
+      subMap.set(key, (subMap.get(key) ?? 0) + Math.abs(m.cantidad));
+    }
+    return Array.from(subMap.entries())
+      .map(([subinventario, cantidad]) => ({ subinventario, cantidad }))
+      .sort((a, b) => b.cantidad - a.cantidad);
+  }, [transferMoves]);
+
+  const tableData = useMemo(
+    () =>
+      transferMoves.map((m) => ({
+        articulo: m.articulo,
+        descripcion: m.descripcion,
+        cantidad: Math.abs(m.cantidad),
+        subinventario: m.subinventario,
+        localizador: m.localizador,
+        usuario: m.usuario,
+        turno: m.turno,
+      })),
+    [transferMoves],
+  );
+
+  if (!transferMoves.length) {
     return (
       <div className="flex items-center justify-center h-32 text-sm text-[var(--color-text-muted)]">
-        Sin datos para esta fecha
+        Sin movimientos de transferencia para esta fecha
       </div>
     );
   }
@@ -64,13 +70,13 @@ export function MovimientosTab({ movimientos }: MovimientosTabProps) {
     <div className="flex flex-col gap-6">
       <div className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl p-4">
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">
-          Cantidad por Tipo de Transacción
+          Cantidad por Subinventario
         </h3>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 40, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
             <XAxis
-              dataKey="tipo"
+              dataKey="subinventario"
               tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }}
               angle={-25}
               textAnchor="end"
@@ -92,12 +98,12 @@ export function MovimientosTab({ movimientos }: MovimientosTabProps) {
 
       <div className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl p-4">
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">
-          Todos los Movimientos
+          Detalle Subinventory Transfer
         </h3>
         <IndicadoresTable
           data={tableData}
           columns={COLUMNS}
-          searchKeys={['articulo', 'descripcion', 'tipoTransaccion', 'usuario']}
+          searchKeys={['articulo', 'descripcion', 'subinventario', 'usuario']}
           maxHeight="500px"
         />
       </div>

@@ -21,8 +21,8 @@ interface ResumenTabProps {
 const TABLE_COLUMNS = [
   { key: 'fecha', label: 'Fecha' },
   { key: 'picking', label: 'Picking', align: 'right' as const },
-  { key: 'pallet_in', label: 'Pallet In', align: 'right' as const },
-  { key: 'pallet_out', label: 'Pallet Out', align: 'right' as const },
+  { key: 'recepcion', label: 'Recepción', align: 'right' as const },
+  { key: 'movimientos', label: 'Movimientos', align: 'right' as const },
   { key: 'contenedores', label: 'Contenedores', align: 'right' as const },
 ];
 
@@ -47,8 +47,8 @@ export function ResumenTab({ historico }: ResumenTabProps) {
       filtered.map((d) => ({
         fecha: formatDateDDMM(d.fecha),
         picking: d.picking,
-        pallet_in: d.pallet_in,
-        pallet_out: d.pallet_out,
+        recepcion: d.recepcion,
+        movimientos: d.movimientos,
         contenedores: d.contenedores,
       })),
     [filtered],
@@ -59,8 +59,8 @@ export function ResumenTab({ historico }: ResumenTabProps) {
       filtered.map((d) => ({
         fecha: d.fecha,
         picking: d.picking,
-        pallet_in: d.pallet_in,
-        pallet_out: d.pallet_out,
+        recepcion: d.recepcion,
+        movimientos: d.movimientos,
         contenedores: d.contenedores,
       })),
     [filtered],
@@ -103,7 +103,7 @@ export function ResumenTab({ historico }: ResumenTabProps) {
               orientation="right"
               tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
               label={{
-                value: 'Pallets / Cont.',
+                value: 'Recep. / Mov. / Cont.',
                 angle: 90,
                 position: 'insideRight',
                 fill: 'var(--color-text-muted)',
@@ -133,8 +133,8 @@ export function ResumenTab({ historico }: ResumenTabProps) {
             <Line
               yAxisId="right"
               type="monotone"
-              dataKey="pallet_in"
-              name="Pallet In"
+              dataKey="recepcion"
+              name="Recepción"
               stroke="var(--color-accent-green)"
               strokeWidth={2}
               dot={false}
@@ -143,8 +143,8 @@ export function ResumenTab({ historico }: ResumenTabProps) {
             <Line
               yAxisId="right"
               type="monotone"
-              dataKey="pallet_out"
-              name="Pallet Out"
+              dataKey="movimientos"
+              name="Movimientos"
               stroke="var(--color-accent-amber)"
               strokeWidth={2}
               dot={false}

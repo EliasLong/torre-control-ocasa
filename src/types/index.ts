@@ -145,9 +145,9 @@ export interface IndicadorDiario {
   fecha: string;
   org: 'PL2' | 'PL3' | 'Total';
   picking: number;
-  pallet_in: number;
-  pallet_out: number;
+  recepcion: number;
   contenedores: number;
+  movimientos: number;
 }
 
 export interface TurnoBreakdown {

@@ -13,14 +13,14 @@ const COLUMNS = [
   { key: 'articulo', label: 'Artículo' },
   { key: 'descripcion', label: 'Descripción' },
   { key: 'cantidad', label: 'Cantidad', align: 'right' as const },
-  { key: 'lpnContenido', label: 'LPN Contenido' },
+  { key: 'lpnContenido', label: 'Contenedor (LPN)' },
   { key: 'usuario', label: 'Usuario' },
   { key: 'turno', label: 'Turno' },
 ];
 
 export function RecepcionTab({ movimientos }: RecepcionTabProps) {
   const recepcionMoves = useMemo(
-    () => movimientos.filter((m) => m.tipoTransaccion.includes('Direct Org Transfer')),
+    () => movimientos.filter((m) => m.subinventario === 'RECEPCION'),
     [movimientos],
   );
 
@@ -29,7 +29,7 @@ export function RecepcionTab({ movimientos }: RecepcionTabProps) {
     [recepcionMoves],
   );
 
-  const totalLPNs = useMemo(() => {
+  const contenedores = useMemo(() => {
     const lpnSet = new Set(
       recepcionMoves
         .filter((m) => m.lpnContenido && m.lpnContenido.trim() !== '')
@@ -60,8 +60,8 @@ export function RecepcionTab({ movimientos }: RecepcionTabProps) {
           unit="unidades"
         />
         <KPICard
-          label="LPNs Únicos"
-          value={totalLPNs.toLocaleString()}
+          label="Contenedores Ingresados"
+          value={contenedores.toLocaleString()}
         />
       </div>
 
