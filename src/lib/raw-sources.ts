@@ -42,7 +42,9 @@ export function parseSheetDate(raw: string): string | null {
 // --- Google Sheets reader ---
 
 export async function fetchSheetRows(sheetId: string, tabName: string, range?: string): Promise<string[][]> {
-  const rangeStr = range ? `${encodeURIComponent(tabName)}!${range}` : encodeURIComponent(tabName);
+  // Wrap tab name in single quotes to prevent Sheets API from interpreting names like "PL3" as cell references
+  const quotedTab = `'${tabName}'`;
+  const rangeStr = range ? `${encodeURIComponent(quotedTab)}!${range}` : encodeURIComponent(quotedTab);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${rangeStr}?key=${API_KEY}`;
   const res = await fetch(url, { next: { revalidate: 300 } }); // cache 5 min
   if (!res.ok) {
