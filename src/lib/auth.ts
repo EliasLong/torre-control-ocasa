@@ -3,7 +3,7 @@ import type { AppUser, TabPermission, UserRole } from '@/types';
 const LS_USERS_KEY = 'auth_users';
 const LS_SESSION_KEY = 'auth_session';
 
-const ALL_TABS: TabPermission[] = ['operacional', 'financiero', 'merma', 'abc-xyz', 'torre-control', 'reportes'];
+const ALL_TABS: TabPermission[] = ['operacional', 'indicadores-diarios', 'financiero', 'merma', 'abc-xyz', 'torre-control', 'reportes'];
 
 // Super admin seed — always exists
 const SUPER_ADMIN: AppUser = {

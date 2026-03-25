@@ -1,5 +1,5 @@
-import { fetchSheetRows, parseSheetDate } from '@/lib/raw-sources';
-import type { MovimientoRaw, IndicadorDiario, TurnoBreakdown } from '@/types';
+import { fetchSheetRows, parseSheetDate, getOperacionesFromSql, getPalletsOutFromSheets } from '@/lib/raw-sources';
+import type { MovimientoRaw, IndicadorDiario, TurnoBreakdown, OperacionDiaria, PalletOut } from '@/types';
 
 const SHEET_MOVIMIENTOS = '15T-YKuVXHs5XAX6hanAM3HlilEjbW4ODcwxmRTtHgFk';
 
@@ -54,7 +54,6 @@ export async function getMovimientosDelDia(fecha: string): Promise<MovimientoRaw
 
   const movimientos: MovimientoRaw[] = [];
 
-  // Skip header row (index 0)
   for (let i = 1; i < pl2Rows.length; i++) {
     const mov = parseRowToMovimiento(pl2Rows[i], 'PL2');
     if (mov && mov.fecha === fecha) movimientos.push(mov);
@@ -68,61 +67,54 @@ export async function getMovimientosDelDia(fecha: string): Promise<MovimientoRaw
   return movimientos;
 }
 
-export async function getResumenDelDia(fecha: string): Promise<IndicadorDiario[]> {
-  const rows = await fetchSheetRows(SHEET_MOVIMIENTOS, 'Acumulado');
-  if (rows.length < 2) return [];
+/**
+ * Build resumen from pre-fetched data (no Acumulado sheet needed).
+ * - Picking per org: from raw movimientos (Sales Order Pick)
+ * - Pallet In per org: count receipt transactions from raw
+ * - Pallet Out per org: from B2C/B2B sheets
+ * - Contenedores: from operaciones_sql (n8n → SQL Server aggregate)
+ */
+export function buildResumen(
+  fecha: string,
+  movimientos: MovimientoRaw[],
+  operaciones: OperacionDiaria[],
+  palletsOut: PalletOut[],
+): IndicadorDiario[] {
+  const pl2: IndicadorDiario = { fecha, org: 'PL2', picking: 0, pallet_in: 0, pallet_out: 0, contenedores: 0 };
+  const pl3: IndicadorDiario = { fecha, org: 'PL3', picking: 0, pallet_in: 0, pallet_out: 0, contenedores: 0 };
 
-  // Group by date+org
-  const map = new Map<string, IndicadorDiario>();
+  for (const mov of movimientos) {
+    const entry = mov.org === 'PL2' ? pl2 : pl3;
+    const tipo = mov.tipoTransaccion.toLowerCase();
 
-  const getOrCreate = (f: string, org: 'PL2' | 'PL3' | 'Total'): IndicadorDiario => {
-    const key = `${f}|${org}`;
-    let entry = map.get(key);
-    if (!entry) {
-      entry = { fecha: f, org, picking: 0, pallet_in: 0, pallet_out: 0, contenedores: 0 };
-      map.set(key, entry);
+    if (tipo === 'sales order pick') {
+      entry.picking += Math.abs(mov.cantidad);
     }
-    return entry;
-  };
-
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    const rowFecha = parseSheetDate(row[0]);
-    if (!rowFecha || rowFecha !== fecha) continue;
-
-    const org = (row[1] || '').trim() as 'PL2' | 'PL3' | 'Total';
-    const tipo = (row[2] || '').trim();
-    const proceso = (row[3] || '').trim();
-    const suma = parseNumericField(row[4]);
-    const pallets = parseNumericField(row[5]);
-
-    if (org === 'PL2' || org === 'PL3') {
-      const entry = getOrCreate(rowFecha, org);
-      if (tipo === 'SALES ORDER PICK' && proceso === 'ALMACEN') {
-        entry.picking = suma;
-      } else if (tipo === '' && proceso === 'RECEPCION') {
-        entry.pallet_in = pallets;
-      }
-    }
-
-    if (org === 'Total') {
-      const entry = getOrCreate(rowFecha, 'Total');
-      if (tipo === 'Contenedores') {
-        entry.contenedores = suma;
-      } else if (tipo === 'Pallet OUT') {
-        entry.pallet_out = pallets;
-      }
+    if (tipo.includes('direct org transfer')) {
+      entry.pallet_in += 1;
     }
   }
 
-  // Build Total row aggregating PL2+PL3 picking/pallet_in if not already set
-  const pl2 = map.get(`${fecha}|PL2`);
-  const pl3 = map.get(`${fecha}|PL3`);
-  const total = getOrCreate(fecha, 'Total');
-  total.picking = (pl2?.picking || 0) + (pl3?.picking || 0);
-  total.pallet_in = (pl2?.pallet_in || 0) + (pl3?.pallet_in || 0);
+  // Pallet out per org from B2C/B2B sheets
+  for (const p of palletsOut) {
+    if (p.fecha !== fecha) continue;
+    if (p.planta === 'PL2') pl2.pallet_out += p.pallets;
+    if (p.planta === 'PL3') pl3.pallet_out += p.pallets;
+  }
 
-  return Array.from(map.values());
+  // Use operaciones_sql for accurate total picking/pallets_in/contenedores
+  const opDia = operaciones.find(o => o.fecha === fecha);
+
+  const total: IndicadorDiario = {
+    fecha,
+    org: 'Total',
+    picking: opDia?.picking ?? (pl2.picking + pl3.picking),
+    pallet_in: opDia?.pallets_in ?? (pl2.pallet_in + pl3.pallet_in),
+    pallet_out: pl2.pallet_out + pl3.pallet_out,
+    contenedores: opDia?.contenedores ?? 0,
+  };
+
+  return [pl2, pl3, total];
 }
 
 export function getTurnoBreakdown(movimientos: MovimientoRaw[]): TurnoBreakdown[] {
@@ -161,70 +153,53 @@ export function getTurnoBreakdown(movimientos: MovimientoRaw[]): TurnoBreakdown[
   }));
 }
 
-export async function getHistorico30Dias(fecha: string): Promise<IndicadorDiario[]> {
-  const endDate = new Date(fecha);
+/**
+ * Build 30-day history from operaciones_sql + B2C/B2B pallet out.
+ * Returns Total-level IndicadorDiario[] (no per-org breakdown for history).
+ */
+export function buildHistorico(
+  fecha: string,
+  operaciones: OperacionDiaria[],
+  palletsOut: PalletOut[],
+): IndicadorDiario[] {
   const startDate = new Date(fecha);
   startDate.setDate(startDate.getDate() - 30);
   const startStr = startDate.toISOString().split('T')[0];
 
-  const rows = await fetchSheetRows(SHEET_MOVIMIENTOS, 'Acumulado');
-  if (rows.length < 2) return [];
-
-  const map = new Map<string, IndicadorDiario>();
-
-  const getOrCreate = (f: string, org: 'PL2' | 'PL3' | 'Total'): IndicadorDiario => {
-    const key = `${f}|${org}`;
-    let entry = map.get(key);
-    if (!entry) {
-      entry = { fecha: f, org, picking: 0, pallet_in: 0, pallet_out: 0, contenedores: 0 };
-      map.set(key, entry);
-    }
-    return entry;
-  };
-
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    const rowFecha = parseSheetDate(row[0]);
-    if (!rowFecha || rowFecha < startStr || rowFecha > fecha) continue;
-
-    const org = (row[1] || '').trim() as 'PL2' | 'PL3' | 'Total';
-    const tipo = (row[2] || '').trim();
-    const proceso = (row[3] || '').trim();
-    const suma = parseNumericField(row[4]);
-    const pallets = parseNumericField(row[5]);
-
-    if (org === 'PL2' || org === 'PL3') {
-      const entry = getOrCreate(rowFecha, org);
-      if (tipo === 'SALES ORDER PICK' && proceso === 'ALMACEN') {
-        entry.picking = suma;
-      } else if (tipo === '' && proceso === 'RECEPCION') {
-        entry.pallet_in = pallets;
-      }
-    }
-
-    if (org === 'Total') {
-      const entry = getOrCreate(rowFecha, 'Total');
-      if (tipo === 'Contenedores') {
-        entry.contenedores = suma;
-      } else if (tipo === 'Pallet OUT') {
-        entry.pallet_out = pallets;
-      }
-    }
+  // Build pallet_out map by date
+  const palletOutMap = new Map<string, number>();
+  for (const p of palletsOut) {
+    if (p.fecha < startStr || p.fecha > fecha) continue;
+    palletOutMap.set(p.fecha, (palletOutMap.get(p.fecha) || 0) + p.pallets);
   }
 
-  // Aggregate PL2+PL3 into Total rows
-  const fechas = new Set<string>();
-  for (const entry of map.values()) {
-    fechas.add(entry.fecha);
-  }
+  return operaciones
+    .filter(o => o.fecha >= startStr && o.fecha <= fecha)
+    .map(o => ({
+      fecha: o.fecha,
+      org: 'Total' as const,
+      picking: o.picking,
+      pallet_in: o.pallets_in,
+      pallet_out: palletOutMap.get(o.fecha) || 0,
+      contenedores: o.contenedores,
+    }))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
 
-  for (const f of fechas) {
-    const pl2 = map.get(`${f}|PL2`);
-    const pl3 = map.get(`${f}|PL3`);
-    const total = getOrCreate(f, 'Total');
-    total.picking = (pl2?.picking || 0) + (pl3?.picking || 0);
-    total.pallet_in = (pl2?.pallet_in || 0) + (pl3?.pallet_in || 0);
-  }
+/**
+ * Fetch all shared data sources in parallel.
+ * Called once from the API route to avoid redundant sheet reads.
+ */
+export async function fetchAllIndicadoresData(fecha: string) {
+  const [movimientos, operaciones, palletsOut] = await Promise.all([
+    getMovimientosDelDia(fecha),
+    getOperacionesFromSql(),
+    getPalletsOutFromSheets(),
+  ]);
 
-  return Array.from(map.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const resumen = buildResumen(fecha, movimientos, operaciones, palletsOut);
+  const turno = getTurnoBreakdown(movimientos);
+  const historico = buildHistorico(fecha, operaciones, palletsOut);
+
+  return { resumen, turno, movimientos, historico };
 }

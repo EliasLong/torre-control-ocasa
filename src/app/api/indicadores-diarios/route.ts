@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getResumenDelDia,
-  getMovimientosDelDia,
-  getHistorico30Dias,
-  getTurnoBreakdown,
-} from '@/services/indicadores.service';
+import { fetchAllIndicadoresData } from '@/services/indicadores.service';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -24,15 +19,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [resumen, movimientos, historico] = await Promise.all([
-      getResumenDelDia(fecha),
-      getMovimientosDelDia(fecha),
-      getHistorico30Dias(fecha),
-    ]);
+    const data = await fetchAllIndicadoresData(fecha);
 
-    const turno = getTurnoBreakdown(movimientos);
-
-    return NextResponse.json({ resumen, turno, movimientos, historico });
+    return NextResponse.json(data);
   } catch (error) {
     console.error('Error in indicadores-diarios API:', error);
     return NextResponse.json(
