@@ -9,7 +9,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { FamiliaDonut } from './FamiliaDonut';
 import { TurnoChart } from './TurnoChart';
 import { IndicadoresTable } from './IndicadoresTable';
 import type { MovimientoRaw, TurnoBreakdown } from '@/types';
@@ -125,15 +124,7 @@ export function PickingTab({ movimientos, turno }: PickingTabProps) {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Distribución por Familia */}
-        <div className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-2">
-            Distribución por Familia
-          </h3>
-          <FamiliaDonut movimientos={pickMoves} />
-        </div>
-
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Picking por Turno */}
         <div className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl p-4">
           <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-2">

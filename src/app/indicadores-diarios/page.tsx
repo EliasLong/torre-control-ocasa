@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { KPICard } from '@/components/kpi/KPICard';
 import { SubTabs } from '@/components/indicadores/SubTabs';
@@ -9,8 +9,7 @@ import { RecepcionTab } from '@/components/indicadores/RecepcionTab';
 import { MovimientosTab } from '@/components/indicadores/MovimientosTab';
 import { PortonesTab } from '@/components/indicadores/PortonesTab';
 import { ResumenTab } from '@/components/indicadores/ResumenTab';
-import type { IndicadoresDiariosData, IndicadorDiario } from '@/types';
-import { useState } from 'react';
+import type { IndicadoresDiariosData, IndicadorDiario, MovimientoRaw } from '@/types';
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error('Error fetching data');
@@ -25,9 +24,13 @@ const SUB_TABS = [
   { id: 'resumen', label: 'Resumen' },
 ];
 
+/** Fecha local YYYY-MM-DD (sin UTC para evitar desfase de zona horaria) */
 function todayStr(): string {
   const d = new Date();
-  return d.toISOString().split('T')[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function formatFechaDisplay(iso: string): string {
@@ -39,9 +42,29 @@ function findByOrg(resumen: IndicadorDiario[], org: string): IndicadorDiario | u
   return resumen.find(r => r.org === org);
 }
 
+type OrgFilter = 'ALL' | 'PL2' | 'PL3';
+type TurnoFilter = 'ALL' | 'MAÑANA' | 'TARDE';
+
+function FilterButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+        active
+          ? 'bg-[var(--color-accent-cyan)] text-white'
+          : 'bg-[var(--color-bg-card)] text-[var(--color-text-muted)] border border-[var(--color-border)] hover:text-[var(--color-text-primary)]'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function IndicadoresDiariosPage() {
   const fecha = todayStr();
   const [activeTab, setActiveTab] = useState('picking');
+  const [orgFilter, setOrgFilter] = useState<OrgFilter>('ALL');
+  const [turnoFilter, setTurnoFilter] = useState<TurnoFilter>('ALL');
 
   const { data, error, isLoading } = useSWR(
     `/api/indicadores-diarios?fecha=${fecha}`,
@@ -50,9 +73,40 @@ export default function IndicadoresDiariosPage() {
   );
 
   const resumen = data?.resumen ?? [];
-  const movimientos = data?.movimientos ?? [];
+  const allMovimientos = data?.movimientos ?? [];
   const turno = data?.turno ?? [];
   const historico = data?.historico ?? [];
+
+  // Apply global filters to movimientos
+  const movimientos = useMemo(() => {
+    let filtered = allMovimientos;
+    if (orgFilter !== 'ALL') {
+      filtered = filtered.filter(m => m.org === orgFilter);
+    }
+    if (turnoFilter !== 'ALL') {
+      filtered = filtered.filter(m => m.turno === turnoFilter);
+    }
+    return filtered;
+  }, [allMovimientos, orgFilter, turnoFilter]);
+
+  // Recalculate turno breakdown based on filtered movimientos
+  const filteredTurno = useMemo(() => {
+    if (turnoFilter === 'ALL' && orgFilter === 'ALL') return turno;
+    const turnoMap = new Map<string, { picking: number; recepcion: number }>();
+    for (const mov of movimientos) {
+      const t = mov.turno;
+      const tipo = mov.tipoTransaccion.toLowerCase();
+      const isPick = tipo === 'sales order pick' && mov.subTransferencia === 'PORTONES';
+      const isRec = mov.subinventario === 'RECEPCION';
+      if (!isPick && !isRec) continue;
+      let entry = turnoMap.get(t);
+      if (!entry) { entry = { picking: 0, recepcion: 0 }; turnoMap.set(t, entry); }
+      const qty = Math.abs(mov.cantidad);
+      if (isPick) entry.picking += qty;
+      if (isRec) entry.recepcion += qty;
+    }
+    return Array.from(turnoMap.entries()).map(([t, d]) => ({ turno: t, picking: d.picking, recepcion: d.recepcion }));
+  }, [movimientos, turno, turnoFilter, orgFilter]);
 
   const total = useMemo(() => findByOrg(resumen, 'Total'), [resumen]);
   const pl2 = useMemo(() => findByOrg(resumen, 'PL2'), [resumen]);
@@ -68,12 +122,30 @@ export default function IndicadoresDiariosPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Indicadores Diarios</h1>
-        <span className="text-sm font-medium text-[var(--color-text-muted)]">
-          {formatFechaDisplay(fecha)}
-        </span>
+      {/* Header + Filters */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Indicadores Diarios</h1>
+          <span className="text-sm font-medium text-[var(--color-text-muted)]">
+            {formatFechaDisplay(fecha)}
+          </span>
+        </div>
+
+        {/* Global Filters */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-[var(--color-text-muted)]">Planta:</span>
+            <FilterButton label="Todas" active={orgFilter === 'ALL'} onClick={() => setOrgFilter('ALL')} />
+            <FilterButton label="PL2" active={orgFilter === 'PL2'} onClick={() => setOrgFilter('PL2')} />
+            <FilterButton label="PL3" active={orgFilter === 'PL3'} onClick={() => setOrgFilter('PL3')} />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-[var(--color-text-muted)]">Turno:</span>
+            <FilterButton label="Todos" active={turnoFilter === 'ALL'} onClick={() => setTurnoFilter('ALL')} />
+            <FilterButton label="Mañana" active={turnoFilter === 'MAÑANA'} onClick={() => setTurnoFilter('MAÑANA')} />
+            <FilterButton label="Tarde" active={turnoFilter === 'TARDE'} onClick={() => setTurnoFilter('TARDE')} />
+          </div>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -113,7 +185,7 @@ export default function IndicadoresDiariosPage() {
           <div className="h-[400px] animate-pulse bg-[var(--color-border)] rounded-lg opacity-20" />
         ) : (
           <>
-            {activeTab === 'picking' && <PickingTab movimientos={movimientos} turno={turno} />}
+            {activeTab === 'picking' && <PickingTab movimientos={movimientos} turno={filteredTurno} />}
             {activeTab === 'recepcion' && <RecepcionTab movimientos={movimientos} />}
             {activeTab === 'movimientos' && <MovimientosTab movimientos={movimientos} />}
             {activeTab === 'portones' && <PortonesTab movimientos={movimientos} />}
