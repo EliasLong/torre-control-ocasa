@@ -6,7 +6,6 @@ import {
   Pie,
   Cell,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from 'recharts';
 import { TurnoChart } from './TurnoChart';
@@ -31,6 +30,12 @@ const COLORS = [
 ];
 
 const HORAS_POR_TURNO = 8;
+
+const TURNO_ACCENT: Record<string, string> = {
+  T1: 'var(--color-accent-cyan)',
+  T2: 'var(--color-accent-green)',
+  T3: 'var(--color-accent-amber)',
+};
 
 const TABLE_COLUMNS = [
   { key: 'articulo', label: 'Artículo' },
@@ -107,22 +112,55 @@ export function PickingTab({ movimientos, turno }: PickingTabProps) {
   return (
     <div className="flex flex-col gap-6">
       {/* Productividad por turno */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {productividad.map((p) => (
-          <div
-            key={p.turno}
-            className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl p-4"
-          >
-            <p className="text-xs text-[var(--color-text-muted)] mb-1">Turno {p.turno}</p>
-            <p className="text-2xl font-bold text-[var(--color-text-primary)]">
-              {p.porHora.toLocaleString()} <span className="text-sm font-normal text-[var(--color-text-muted)]">uds/hora</span>
-            </p>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">
-              Total: {p.total.toLocaleString()} uds en {HORAS_POR_TURNO}h
-            </p>
-          </div>
-        ))}
-      </div>
+      {productividad.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {productividad.map((p) => {
+            const accent = TURNO_ACCENT[p.turno] ?? 'var(--color-accent-cyan)';
+            return (
+              <div
+                key={p.turno}
+                className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl p-4 relative overflow-hidden"
+              >
+                {/* Accent top bar */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-1"
+                  style={{ background: accent }}
+                />
+                <p className="text-xs text-[var(--color-text-muted)] mb-2 mt-1 uppercase tracking-wide">
+                  Turno {p.turno}
+                </p>
+                <p className="text-3xl font-bold" style={{ color: accent }}>
+                  {p.porHora.toLocaleString()}
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5 mb-3">
+                  unidades / hora
+                </p>
+                {/* Mini progress-like bar */}
+                <div className="w-full h-1.5 rounded-full bg-[var(--color-border)] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${Math.min(100, (p.porHora / Math.max(...productividad.map(x => x.porHora))) * 100)}%`,
+                      background: accent,
+                      opacity: 0.7,
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-[var(--color-text-muted)] mt-2">
+                  Total: {p.total.toLocaleString()} uds en {HORAS_POR_TURNO}h
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-28 gap-1">
+          <p className="text-sm text-[var(--color-text-muted)]">Sin datos de productividad por turno</p>
+          <p className="text-xs text-[var(--color-text-muted)] opacity-60">
+            No se registraron movimientos de picking en la fecha seleccionada.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Picking por Turno */}
@@ -139,40 +177,65 @@ export function PickingTab({ movimientos, turno }: PickingTabProps) {
             Picking por Usuario
           </h3>
           {userChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <Pie
-                  data={userChartData}
-                  cx="50%"
-                  cy="45%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  dataKey="value"
-                  nameKey="name"
-                  paddingAngle={2}
-                >
-                  {userChartData.map((_, index) => (
-                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    background: 'var(--color-bg-card)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    color: 'var(--color-text-primary)',
-                  }}
-                  formatter={(value) => Number(value).toLocaleString()}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  wrapperStyle={{ fontSize: 11, color: 'var(--color-text-muted)' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="flex flex-col lg:flex-row items-center gap-4">
+              <ResponsiveContainer width="100%" height={280} className="flex-shrink-0 lg:max-w-[55%]">
+                <PieChart>
+                  <Pie
+                    data={userChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={95}
+                    dataKey="value"
+                    nameKey="name"
+                    paddingAngle={2}
+                  >
+                    {userChartData.map((_, index) => (
+                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      background: 'var(--color-bg-card)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text-primary)',
+                    }}
+                    formatter={(value) => Number(value).toLocaleString()}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              {/* Custom legend for better readability */}
+              <div className="flex flex-col gap-1.5 w-full lg:w-auto">
+                {userChartData.map((entry, index) => {
+                  const total = userChartData.reduce((s, e) => s + e.value, 0);
+                  const pct = total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0';
+                  return (
+                    <div key={entry.name} className="flex items-center gap-2 text-xs">
+                      <span
+                        className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                        style={{ background: COLORS[index % COLORS.length] }}
+                      />
+                      <span className="text-[var(--color-text-primary)] truncate max-w-[120px]" title={entry.name}>
+                        {entry.name}
+                      </span>
+                      <span className="text-[var(--color-text-muted)] ml-auto tabular-nums">
+                        {entry.value.toLocaleString()}
+                      </span>
+                      <span className="text-[var(--color-text-muted)] tabular-nums w-10 text-right">
+                        {pct}%
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           ) : (
-            <div className="flex items-center justify-center h-48 text-sm text-[var(--color-text-muted)]">
-              Sin datos
+            <div className="flex flex-col items-center justify-center h-48 gap-1">
+              <p className="text-sm text-[var(--color-text-muted)]">Sin datos de picking por usuario</p>
+              <p className="text-xs text-[var(--color-text-muted)] opacity-60">
+                No se encontraron movimientos de picking asignados a usuarios.
+              </p>
             </div>
           )}
         </div>

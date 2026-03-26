@@ -25,6 +25,8 @@ export interface KPIData {
   unit?: string;
   trend?: 'up' | 'down' | 'neutral';
   trendValue?: string;
+  accent?: 'cyan' | 'green' | 'amber' | 'red';
+  subtitle?: string;
 }
 
 export interface DateRange {
