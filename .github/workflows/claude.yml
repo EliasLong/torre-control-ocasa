@@ -1,0 +1,50 @@
+name: Claude Code
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  # Responde a @claude en comentarios de PRs e issues
+  claude-comment:
+    if: |
+      github.event_name == 'issue_comment' ||
+      github.event_name == 'pull_request_review_comment'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  # Review automático en cada PR nueva o actualizada
+  claude-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Revisa este pull request analizando:
+            - Calidad del código y buenas prácticas (TypeScript, Next.js)
+            - Posibles bugs o errores lógicos
+            - Seguridad (XSS, inyección, manejo de datos sensibles)
+            - Rendimiento y optimización
+            - Consistencia con el resto del proyecto
+            Publica tus hallazgos como review comments en español.
+          claude_args: "--max-turns 5"
