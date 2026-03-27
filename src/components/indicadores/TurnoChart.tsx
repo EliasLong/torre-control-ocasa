@@ -57,18 +57,9 @@ export function TurnoChart({ data }: TurnoChartProps) {
           formatter={(value, name) => [Number(value).toLocaleString() + ' uds', String(name)]}
           cursor={{ fill: 'var(--color-accent-cyan)', opacity: 0.04 }}
         />
-        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 4 }} />
-        <Bar dataKey="picking" name="Picking" fill="var(--color-accent-cyan)" barSize={16} radius={[0, 3, 3, 0]}>
+        <Bar dataKey="picking" name="Picking" fill="var(--color-accent-cyan)" barSize={20} radius={[0, 4, 4, 0]}>
           <LabelList
             dataKey="picking"
-            position="right"
-            formatter={(v) => Number(v).toLocaleString()}
-            style={{ fill: 'var(--color-text-muted)', fontSize: 10 }}
-          />
-        </Bar>
-        <Bar dataKey="recepcion" name="Recepcion" fill="var(--color-accent-amber)" barSize={16} radius={[0, 3, 3, 0]}>
-          <LabelList
-            dataKey="recepcion"
             position="right"
             formatter={(v) => Number(v).toLocaleString()}
             style={{ fill: 'var(--color-text-muted)', fontSize: 10 }}

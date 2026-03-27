@@ -48,7 +48,7 @@ export function ResumenTab({ historico }: ResumenTabProps) {
         fecha: formatDateDDMM(d.fecha),
         picking: d.picking,
         recepcion: d.recepcion,
-        movimientos: d.movimientos,
+
         contenedores: d.contenedores,
       })),
     [filtered],
@@ -60,7 +60,7 @@ export function ResumenTab({ historico }: ResumenTabProps) {
         fecha: d.fecha,
         picking: d.picking,
         recepcion: d.recepcion,
-        movimientos: d.movimientos,
+
         contenedores: d.contenedores,
       })),
     [filtered],

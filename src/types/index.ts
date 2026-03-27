@@ -149,18 +149,15 @@ export interface IndicadorDiario {
   picking: number;
   recepcion: number;
   contenedores: number;
-  movimientos: number;
 }
 
 export interface TurnoBreakdown {
   turno: string;
   picking: number;
-  recepcion: number;
 }
 
 export interface IndicadoresDiariosData {
   resumen: IndicadorDiario[];
   turno: TurnoBreakdown[];
   movimientos: MovimientoRaw[];
-  historico: IndicadorDiario[];
 }

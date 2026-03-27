@@ -19,9 +19,10 @@ interface RecepcionTabProps {
 }
 
 const COLUMNS = [
-  { key: 'articulo', label: 'Artículo' },
-  { key: 'descripcion', label: 'Descripción' },
+  { key: 'articulo', label: 'Articulo' },
+  { key: 'descripcion', label: 'Descripcion' },
   { key: 'cantidad', label: 'Cantidad', align: 'right' as const },
+  { key: 'localizador', label: 'Localizador' },
   { key: 'lpnContenido', label: 'Contenedor (LPN)' },
   { key: 'usuario', label: 'Usuario' },
   { key: 'turno', label: 'Turno' },
@@ -29,7 +30,9 @@ const COLUMNS = [
 
 export function RecepcionTab({ movimientos }: RecepcionTabProps) {
   const recepcionMoves = useMemo(
-    () => movimientos.filter((m) => m.subinventario === 'RECEPCION'),
+    () => movimientos.filter(
+      (m) => m.subinventario === 'RECEPCION' && m.tipoTransaccion.toLowerCase() === 'direct org transfer sin remito',
+    ),
     [movimientos],
   );
 
@@ -67,6 +70,7 @@ export function RecepcionTab({ movimientos }: RecepcionTabProps) {
         articulo: m.articulo,
         descripcion: m.descripcion,
         cantidad: Math.abs(m.cantidad),
+        localizador: m.localizador,
         lpnContenido: m.lpnContenido || '',
         usuario: m.usuario,
         turno: m.turno,

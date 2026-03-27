@@ -39,8 +39,9 @@ const TURNO_ACCENT: Record<string, string> = {
 
 const TABLE_COLUMNS = [
   { key: 'articulo', label: 'Artículo' },
-  { key: 'descripcion', label: 'Descripción' },
+  { key: 'descripcion', label: 'Descripcion' },
   { key: 'cantidad', label: 'Cantidad', align: 'right' as const },
+  { key: 'localizador', label: 'Localizador' },
   { key: 'subinventario', label: 'Subinventario' },
   { key: 'cliente', label: 'Cliente' },
   { key: 'usuario', label: 'Usuario' },
@@ -101,6 +102,7 @@ export function PickingTab({ movimientos, turno }: PickingTabProps) {
         articulo: m.articulo,
         descripcion: m.descripcion,
         cantidad: Math.abs(m.cantidad),
+        localizador: m.localizador,
         subinventario: m.subinventario,
         cliente: getCliente(m),
         usuario: m.usuario,
