@@ -65,7 +65,7 @@ export default function OperacionalPage() {
   const [capacidadPicking, setCapacidadPicking] = useState(DEFAULT_CAPACIDAD);
 
   const apiUrl = `/api/operacional?from=${dateRange.from}&to=${dateRange.to}`;
-  const { data, error, isLoading } = useSWR(apiUrl, fetcher, { keepPreviousData: true });
+  const { data, error, isLoading } = useSWR(apiUrl, fetcher, { keepPreviousData: true, refreshInterval: 60000 });
 
   const palletsOut = data?.palletsOut ?? [];
   const operaciones = data?.operaciones ?? [];

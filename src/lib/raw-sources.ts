@@ -46,7 +46,7 @@ export async function fetchSheetRows(sheetId: string, tabName: string, range?: s
   const quotedTab = `'${tabName}'`;
   const rangeStr = range ? `${encodeURIComponent(quotedTab)}!${range}` : encodeURIComponent(quotedTab);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${rangeStr}?key=${API_KEY}`;
-  const res = await fetch(url, { next: { revalidate: 300 } }); // cache 5 min
+  const res = await fetch(url, { next: { revalidate: 60 } }); // cache 1 min
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Sheets API error (${sheetId}/${tabName}): ${res.status} - ${text}`);
