@@ -161,3 +161,21 @@ export interface IndicadoresDiariosData {
   turno: TurnoBreakdown[];
   movimientos: MovimientoRaw[];
 }
+
+// --- Movimiento de Camiones ---
+
+export interface CamionMovimiento {
+  patente: string;
+  contenedor: string | null; // null = no es recepción de contenedor
+  empresa: string;
+  fechaIngreso: string;      // YYYY-MM-DD
+  horaIngreso: string | null;
+  fechaEgreso: string | null; // null = aún en predio
+  horaEgreso: string | null;
+  estado: 'en_predio' | 'egresado';
+}
+
+export interface CamionesDiariosData {
+  camiones: CamionMovimiento[];
+  fecha: string;
+}

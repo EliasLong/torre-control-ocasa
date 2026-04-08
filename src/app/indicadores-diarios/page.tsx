@@ -9,6 +9,8 @@ import { PickingTab } from '@/components/indicadores/PickingTab';
 import { RecepcionTab } from '@/components/indicadores/RecepcionTab';
 import { MovimientosTab } from '@/components/indicadores/MovimientosTab';
 import { RmaTab } from '@/components/indicadores/RmaTab';
+import { CamionesTab } from '@/components/indicadores/CamionesTab';
+import { OcupacionTab } from '@/components/indicadores/OcupacionTab';
 import type { IndicadoresDiariosData, IndicadorDiario } from '@/types';
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -21,6 +23,8 @@ const SUB_TABS = [
   { id: 'recepcion', label: 'Recepcion' },
   { id: 'movimientos', label: 'Movimientos' },
   { id: 'rma', label: 'RMA' },
+  { id: 'ocupacion', label: 'Ocupacion' },
+  { id: 'camiones', label: 'Mov. Camiones' },
 ];
 
 /** Fecha local YYYY-MM-DD (sin UTC para evitar desfase de zona horaria) */
@@ -327,6 +331,8 @@ export default function IndicadoresDiariosPage() {
               {activeTab === 'recepcion' && <RecepcionTab movimientos={movimientos} />}
               {activeTab === 'movimientos' && <MovimientosTab movimientos={movimientos} />}
               {activeTab === 'rma' && <RmaTab movimientos={movimientos} />}
+              {activeTab === 'ocupacion' && <OcupacionTab />}
+              {activeTab === 'camiones' && <CamionesTab fecha={fecha} />}
             </>
           )}
         </div>
