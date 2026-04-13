@@ -6,8 +6,7 @@ import type { Tarifa, Costo, AppUser, TabPermission, UserRole } from '@/types';
 import { tarifasMock, costosMock } from '@/lib/mock/financiero.mock';
 import { TarifasTable } from '@/components/tables/TarifasTable';
 import { CostosTable } from '@/components/tables/CostosTable';
-import { getAllUsers, updateUserStatus, updateUserRole, updateUserTabs, ALL_TABS } from '@/lib/auth';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { ALL_TABS } from '@/lib/auth';
 
 const LS_KEY_TARIFAS = 'admin_tarifas';
 const LS_KEY_COSTOS = 'admin_costos';
@@ -26,11 +25,7 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 function saveToStorage<T>(key: string, value: T): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // silent
-  }
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
 }
 
 const TAB_LABELS: Record<TabPermission, string> = {
@@ -41,70 +36,81 @@ const TAB_LABELS: Record<TabPermission, string> = {
   'torre-control': 'Torre de Control',
   reportes: 'Reportes',
   'indicadores-diarios': 'Indicadores Diarios',
-};
-
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Pendiente', color: 'var(--color-accent-amber)' },
-  approved: { label: 'Aprobado', color: 'var(--color-accent-green)' },
-  rejected: { label: 'Rechazado', color: 'var(--color-accent-red)' },
+  tracking: 'Tracking',
+  'estado-del-turno': 'Estado del Turno',
+  incidencias: 'Incidencias',
 };
 
 export default function AdminPage() {
-  const { refresh } = useAuth();
   const [activeTab, setActiveTab] = useState<AdminTab>('usuarios');
   const [tarifas, setTarifas] = useState<Tarifa[]>([]);
   const [costos, setCostos] = useState<Costo[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setTarifas(loadFromStorage<Tarifa[]>(LS_KEY_TARIFAS, tarifasMock));
     setCostos(loadFromStorage<Costo[]>(LS_KEY_COSTOS, costosMock));
-    setUsers(getAllUsers());
     setHydrated(true);
   }, []);
 
-  const refreshUsers = useCallback(() => {
-    setUsers(getAllUsers());
-    refresh();
-  }, [refresh]);
-
-  const handleTarifasUpdate = useCallback((next: Tarifa[]) => {
-    setTarifas(next);
-    saveToStorage(LS_KEY_TARIFAS, next);
+  const fetchUsers = useCallback(async () => {
+    setLoadingUsers(true);
+    try {
+      const res = await fetch('/api/users');
+      if (res.ok) setUsers(await res.json());
+    } finally {
+      setLoadingUsers(false);
+    }
   }, []);
 
-  const handleCostosUpdate = useCallback((next: Costo[]) => {
-    setCostos(next);
-    saveToStorage(LS_KEY_COSTOS, next);
-  }, []);
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-  const handleStatusChange = useCallback((userId: string, status: 'approved' | 'rejected') => {
-    updateUserStatus(userId, status);
-    refreshUsers();
-  }, [refreshUsers]);
+  const handleStatusChange = useCallback(async (userId: string, status: 'approved' | 'rejected') => {
+    await fetch('/api/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: userId, status }),
+    });
+    fetchUsers();
+  }, [fetchUsers]);
 
-  const handleRoleChange = useCallback((userId: string, role: UserRole) => {
-    updateUserRole(userId, role);
-    refreshUsers();
-  }, [refreshUsers]);
+  const handleRoleChange = useCallback(async (userId: string, role: UserRole) => {
+    await fetch('/api/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: userId, role }),
+    });
+    fetchUsers();
+  }, [fetchUsers]);
 
-  const handleTabToggle = useCallback((userId: string, tab: TabPermission) => {
+  const handleTabToggle = useCallback(async (userId: string, tab: TabPermission) => {
     const user = users.find(u => u.id === userId);
     if (!user) return;
     const next = user.tabs.includes(tab)
       ? user.tabs.filter(t => t !== tab)
       : [...user.tabs, tab];
-    updateUserTabs(userId, next);
-    refreshUsers();
-  }, [users, refreshUsers]);
+    await fetch('/api/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: userId, tabs: next }),
+    });
+    fetchUsers();
+  }, [users, fetchUsers]);
+
+  const handleTarifasUpdate = (next: Tarifa[]) => {
+    setTarifas(next);
+    saveToStorage(LS_KEY_TARIFAS, next);
+  };
+
+  const handleCostosUpdate = (next: Costo[]) => {
+    setCostos(next);
+    saveToStorage(LS_KEY_COSTOS, next);
+  };
 
   if (!hydrated) {
-    return (
-      <div className="flex items-center justify-center h-64 text-[var(--color-text-muted)]">
-        Cargando...
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64 text-[var(--color-text-muted)]">Cargando...</div>;
   }
 
   const tabs: { key: AdminTab; label: string; icon: typeof Users }[] = [
@@ -119,12 +125,9 @@ export default function AdminPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Settings size={24} className="text-[var(--color-accent-cyan)]" />
-        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
-          Administración
-        </h1>
+        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Administración</h1>
       </div>
 
-      {/* Tab navigation */}
       <div className="flex gap-1 bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-xl p-1">
         {tabs.map(({ key, label, icon: Icon }) => (
           <button
@@ -147,26 +150,21 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {/* Tab content */}
       {activeTab === 'usuarios' && (
-        <UsersPanel
-          users={users}
-          onStatusChange={handleStatusChange}
-          onRoleChange={handleRoleChange}
-          onTabToggle={handleTabToggle}
-        />
+        loadingUsers
+          ? <div className="text-center py-12 text-[var(--color-text-muted)]">Cargando usuarios...</div>
+          : <UsersPanel
+              users={users}
+              onStatusChange={handleStatusChange}
+              onRoleChange={handleRoleChange}
+              onTabToggle={handleTabToggle}
+            />
       )}
-      {activeTab === 'tarifas' && (
-        <TarifasTable tarifas={tarifas} onUpdate={handleTarifasUpdate} />
-      )}
-      {activeTab === 'costos' && (
-        <CostosTable costos={costos} onUpdate={handleCostosUpdate} />
-      )}
+      {activeTab === 'tarifas' && <TarifasTable tarifas={tarifas} onUpdate={handleTarifasUpdate} />}
+      {activeTab === 'costos' && <CostosTable costos={costos} onUpdate={handleCostosUpdate} />}
     </div>
   );
 }
-
-// --- Users Panel ---
 
 function UsersPanel({
   users,
@@ -185,7 +183,6 @@ function UsersPanel({
 
   return (
     <div className="space-y-6">
-      {/* Pending approvals */}
       {pending.length > 0 && (
         <div className="bg-[var(--color-bg-card)] border border-[var(--color-accent-amber)]/30 rounded-xl p-5">
           <h3 className="text-sm font-semibold text-[var(--color-accent-amber)] uppercase tracking-wide mb-4">
@@ -196,7 +193,7 @@ function UsersPanel({
               <div key={user.id} className="flex items-center justify-between p-3 bg-[var(--color-bg-surface)] rounded-lg border border-[var(--color-border)]">
                 <div>
                   <p className="text-sm font-medium text-[var(--color-text-primary)]">{user.name}</p>
-                  <p className="text-xs text-[var(--color-text-muted)]">{user.email} — Registrado: {user.createdAt}</p>
+                  <p className="text-xs text-[var(--color-text-muted)]">{user.email}</p>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -218,7 +215,6 @@ function UsersPanel({
         </div>
       )}
 
-      {/* Active users */}
       <div className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl p-5">
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide mb-4">
           Usuarios activos ({active.length})
@@ -293,18 +289,15 @@ function UsersPanel({
         </div>
       </div>
 
-      {/* Rejected users */}
       {rejected.length > 0 && (
         <div className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl p-5">
           <h3 className="text-sm font-semibold text-[var(--color-text-muted)] uppercase tracking-wide mb-4">
-            Usuarios rechazados/desactivados ({rejected.length})
+            Usuarios desactivados ({rejected.length})
           </h3>
           <div className="space-y-2">
             {rejected.map(user => (
               <div key={user.id} className="flex items-center justify-between p-3 bg-[var(--color-bg-surface)] rounded-lg border border-[var(--color-border)]">
-                <div>
-                  <p className="text-sm text-[var(--color-text-muted)]">{user.name} — {user.email}</p>
-                </div>
+                <p className="text-sm text-[var(--color-text-muted)]">{user.name} — {user.email}</p>
                 <button
                   onClick={() => onStatusChange(user.id, 'approved')}
                   className="px-3 py-1.5 text-xs font-semibold bg-[var(--color-accent-green)] text-white rounded-lg hover:opacity-90 transition-opacity"

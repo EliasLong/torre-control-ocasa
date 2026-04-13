@@ -2,7 +2,7 @@ export type Nave = 'PL2' | 'PL3' | 'todas';
 
 // --- Auth & Users ---
 
-export type TabPermission = 'operacional' | 'financiero' | 'merma' | 'abc-xyz' | 'torre-control' | 'reportes' | 'indicadores-diarios';
+export type TabPermission = 'operacional' | 'financiero' | 'merma' | 'abc-xyz' | 'torre-control' | 'reportes' | 'indicadores-diarios' | 'tracking' | 'estado-del-turno' | 'incidencias';
 
 export type UserRole = 'superadmin' | 'admin' | 'viewer';
 
@@ -12,12 +12,16 @@ export interface AppUser {
   id: string;
   email: string;
   name: string;
-  password: string; // Phase 1 only — plain text in localStorage
+  password: string; // empty string on client — never expose hash
   role: UserRole;
   status: UserStatus;
   tabs: TabPermission[];
   createdAt: string; // ISO date
 }
+
+// Tracking types
+export type { Warehouse, TripType, TripStatus, TrackingTrip, B2CTrip, B2BTrip } from './tracking'
+export { TRIP_STATUS_LABELS, TRIP_STATUS_COLORS } from './tracking'
 
 export interface KPIData {
   label: string;
