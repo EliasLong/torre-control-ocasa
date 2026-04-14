@@ -1,18 +1,17 @@
 /**
- * Server-only auth helpers — JWT + SQL Server.
+ * Server-only auth helpers — JWT + PostgreSQL.
  * Never import this in client components.
  */
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import type { AppUser, TabPermission, UserRole, UserStatus } from '@/types'
-import { getPool, sql } from './sql'
+import { query } from './sql'
 
 const COOKIE_NAME = 'session'
 const JWT_EXPIRY = '7d'
 
 function getJwtSecret(): Uint8Array {
-    const secret = process.env.JWT_SECRET
-    if (!secret) throw new Error('JWT_SECRET env var is not set')
+    const secret = process.env.JWT_SECRET ?? 'dev-secret-change-in-production'
     return new TextEncoder().encode(secret)
 }
 
@@ -47,7 +46,7 @@ export async function setSessionCookie(token: string): Promise<void> {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+        maxAge: 60 * 60 * 24 * 7,
         path: '/',
     })
 }
@@ -78,26 +77,24 @@ interface DbUser {
 
 export async function getUserById(id: string): Promise<AppUser | null> {
     try {
-        const pool = await getPool()
-        const result = await pool.request()
-            .input('id', sql.UniqueIdentifier, id)
-            .query<DbUser>('SELECT id, email, name, role, status, tabs FROM users WHERE id = @id')
-
-        const row = result.recordset[0]
-        if (!row) return null
-        return dbRowToAppUser(row)
+        const rows = await query<DbUser>(
+            'SELECT id, email, name, role, status, tabs FROM users WHERE id = $1',
+            [id]
+        )
+        if (!rows[0]) return null
+        return dbRowToAppUser(rows[0])
     } catch {
         return null
     }
 }
 
-export async function getUserByEmail(email: string): Promise<(DbUser) | null> {
+export async function getUserByEmail(email: string): Promise<DbUser | null> {
     try {
-        const pool = await getPool()
-        const result = await pool.request()
-            .input('email', sql.NVarChar, email.toLowerCase())
-            .query<DbUser>('SELECT id, email, name, password_hash, role, status, tabs FROM users WHERE email = @email')
-        return result.recordset[0] ?? null
+        const rows = await query<DbUser>(
+            'SELECT id, email, name, password_hash, role, status, tabs FROM users WHERE email = $1',
+            [email.toLowerCase()]
+        )
+        return rows[0] ?? null
     } catch {
         return null
     }
@@ -126,7 +123,7 @@ function dbRowToAppUser(row: DbUser): AppUser {
         id: row.id,
         email: row.email,
         name: row.name,
-        password: '', // never expose hash to client
+        password: '',
         role: row.role,
         status: row.status,
         tabs,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { getSessionUser } from '@/lib/auth-server'
-import { getPool, sql } from '@/lib/sql'
+import { query } from '@/lib/sql'
 import type { UserRole, TabPermission } from '@/types'
 
 async function requireAdmin() {
@@ -18,16 +18,13 @@ export async function GET() {
     const auth = await requireAdmin()
     if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
-    const pool = await getPool()
-    const result = await pool.request().query(`
-        SELECT id, email, name, role, status, tabs, created_at
-        FROM users
-        ORDER BY created_at DESC
-    `)
+    const rows = await query(
+        'SELECT id, email, name, role, status, tabs, created_at FROM users ORDER BY created_at DESC'
+    )
 
-    return NextResponse.json(result.recordset.map(r => ({
+    return NextResponse.json(rows.map((r: Record<string, unknown>) => ({
         ...r,
-        tabs: (() => { try { return JSON.parse(r.tabs) } catch { return [] } })(),
+        tabs: (() => { try { return JSON.parse(r.tabs as string) } catch { return [] } })(),
         password: '',
         createdAt: r.created_at,
     })))
@@ -47,17 +44,12 @@ export async function POST(request: NextRequest) {
     }
 
     const hash = await bcrypt.hash(password, 10)
-    const pool = await getPool()
 
-    await pool.request()
-        .input('email', sql.NVarChar, email.toLowerCase())
-        .input('name', sql.NVarChar, name ?? '')
-        .input('hash', sql.NVarChar, hash)
-        .input('role', sql.NVarChar, role ?? 'viewer')
-        .query(`
-            INSERT INTO users (email, name, password_hash, role, status, tabs)
-            VALUES (@email, @name, @hash, @role, 'approved', '[]')
-        `)
+    await query(
+        `INSERT INTO users (email, name, password_hash, role, status, tabs)
+         VALUES ($1, $2, $3, $4, 'approved', '[]')`,
+        [email.toLowerCase(), name ?? '', hash, role ?? 'viewer']
+    )
 
     return NextResponse.json({ ok: true }, { status: 201 })
 }
@@ -76,27 +68,14 @@ export async function PATCH(request: NextRequest) {
 
     if (!body.id) return NextResponse.json({ error: 'id es requerido' }, { status: 400 })
 
-    const pool = await getPool()
-
     if (body.status !== undefined) {
-        await pool.request()
-            .input('id', sql.UniqueIdentifier, body.id)
-            .input('status', sql.NVarChar, body.status)
-            .query('UPDATE users SET status = @status, updated_at = SYSUTCDATETIME() WHERE id = @id')
+        await query('UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2', [body.status, body.id])
     }
-
     if (body.role !== undefined) {
-        await pool.request()
-            .input('id', sql.UniqueIdentifier, body.id)
-            .input('role', sql.NVarChar, body.role)
-            .query('UPDATE users SET role = @role, updated_at = SYSUTCDATETIME() WHERE id = @id')
+        await query('UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2', [body.role, body.id])
     }
-
     if (body.tabs !== undefined) {
-        await pool.request()
-            .input('id', sql.UniqueIdentifier, body.id)
-            .input('tabs', sql.NVarChar, JSON.stringify(body.tabs))
-            .query('UPDATE users SET tabs = @tabs, updated_at = SYSUTCDATETIME() WHERE id = @id')
+        await query('UPDATE users SET tabs = $1, updated_at = NOW() WHERE id = $2', [JSON.stringify(body.tabs), body.id])
     }
 
     return NextResponse.json({ ok: true })
@@ -110,15 +89,10 @@ export async function DELETE(request: NextRequest) {
     const { id } = await request.json() as { id: string }
     if (!id) return NextResponse.json({ error: 'id es requerido' }, { status: 400 })
 
-    // Prevent self-deletion
     if (id === auth.user.id) {
         return NextResponse.json({ error: 'No podés eliminar tu propio usuario' }, { status: 400 })
     }
 
-    const pool = await getPool()
-    await pool.request()
-        .input('id', sql.UniqueIdentifier, id)
-        .query('DELETE FROM users WHERE id = @id')
-
+    await query('DELETE FROM users WHERE id = $1', [id])
     return NextResponse.json({ ok: true })
 }
