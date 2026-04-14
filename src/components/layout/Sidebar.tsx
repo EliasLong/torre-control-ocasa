@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { BarChart3, CalendarDays, DollarSign, TrendingDown, Grid3X3, Settings, Activity, LogOut, FileSpreadsheet } from 'lucide-react';
+import { BarChart3, CalendarDays, DollarSign, TrendingDown, Grid3X3, Settings, Activity, LogOut, FileSpreadsheet, Truck, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { canAccessTab, isAdmin } from '@/lib/auth';
 import type { TabPermission } from '@/types';
@@ -22,6 +22,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/abc-xyz', label: 'ABC-XYZ', icon: Grid3X3, tab: 'abc-xyz' },
   { href: '/torre-control', label: 'Torre de Control', icon: Activity, tab: 'torre-control' },
   { href: '/reportes', label: 'Reportes', icon: FileSpreadsheet, tab: 'reportes' },
+  { href: '/tracking', label: 'Tracking', icon: Truck, tab: 'tracking' },
+  { href: '/herramientas/incidencias', label: 'Incidencias', icon: AlertTriangle, tab: 'incidencias' },
 ];
 
 export function Sidebar() {
@@ -73,7 +75,7 @@ export function Sidebar() {
               {user.name}
             </span>
             <button
-              onClick={logout}
+              onClick={() => logout()}
               className="text-[var(--color-text-muted)] hover:text-[var(--color-accent-red)] transition-colors"
               title="Cerrar sesión"
             >

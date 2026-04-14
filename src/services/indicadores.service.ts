@@ -1,4 +1,4 @@
-import { fetchSheetRows, parseSheetDate, getOperacionesFromSql } from '@/lib/raw-sources';
+import { fetchSheetRows, parseSheetDate } from '@/lib/raw-sources';
 import type { MovimientoRaw, IndicadorDiario, TurnoBreakdown } from '@/types';
 
 const SHEET_MOVIMIENTOS = '15T-YKuVXHs5XAX6hanAM3HlilEjbW4ODcwxmRTtHgFk';
@@ -27,7 +27,6 @@ function parseRowToMovimiento(row: string[], org: 'PL2' | 'PL3'): MovimientoRaw 
   const turnoIndex = org === 'PL2' ? 15 : 18;
   const turno = (row[turnoIndex] || '').trim().toUpperCase();
 
-  // Solo turnos MAÑANA y TARDE
   if (!TURNOS_VALIDOS.includes(turno)) return null;
 
   return {
@@ -38,7 +37,7 @@ function parseRowToMovimiento(row: string[], org: 'PL2' | 'PL3'): MovimientoRaw 
     cantidad: parseNumericField(row[4]),
     costo: parseNumericField(row[5]),
     subinventario: (row[7] || '').trim().toUpperCase(),
-    localizador: row[8] || '',
+    localizador: (row[8] || '').trim(),
     subTransferencia: (row[9] || '').trim().toUpperCase(),
     lpnTransferido: (row[10] || '').trim(),
     tipoOrigen: (row[11] || '').trim(),
@@ -50,18 +49,30 @@ function parseRowToMovimiento(row: string[], org: 'PL2' | 'PL3'): MovimientoRaw 
   };
 }
 
-function isPicking(mov: MovimientoRaw): boolean {
+// --- Filters ---
+
+export function isPicking(mov: MovimientoRaw): boolean {
   return (
     mov.tipoTransaccion.toLowerCase() === 'sales order pick' &&
     mov.subTransferencia === 'PORTONES'
   );
 }
 
-function isRecepcion(mov: MovimientoRaw): boolean {
-  return mov.subinventario === 'RECEPCION';
+export function isRecepcion(mov: MovimientoRaw): boolean {
+  return (
+    mov.subinventario === 'RECEPCION' &&
+    mov.tipoTransaccion.toLowerCase() === 'direct org transfer sin remito'
+  );
 }
 
-function isMovimientoTransfer(mov: MovimientoRaw): boolean {
+export function isRMA(mov: MovimientoRaw): boolean {
+  return (
+    mov.subinventario === 'RECEPCION' &&
+    mov.tipoTransaccion.toLowerCase() === 'rma receipt'
+  );
+}
+
+export function isMovimientoTransfer(mov: MovimientoRaw): boolean {
   return mov.tipoTransaccion.toLowerCase() === 'subinventory transfer';
 }
 
@@ -91,16 +102,15 @@ export async function getMovimientosDelDia(fecha: string): Promise<MovimientoRaw
 /**
  * Build resumen from movimientos del día.
  * - Picking: Sales Order Pick + subTransferencia PORTONES
- * - Recepción: subinventario RECEPCION (unidades)
- * - Contenedores: distinct lpnContenido de RECEPCION
- * - Movimientos: Subinventory Transfer
+ * - Recepción: subinventario RECEPCION + Direct Org Transfer Sin Remito
+ * - Contenedores: distinct lpnContenido de recepción
  */
 export function buildResumen(
   fecha: string,
   movimientos: MovimientoRaw[],
 ): IndicadorDiario[] {
-  const pl2: IndicadorDiario = { fecha, org: 'PL2', picking: 0, recepcion: 0, contenedores: 0, movimientos: 0 };
-  const pl3: IndicadorDiario = { fecha, org: 'PL3', picking: 0, recepcion: 0, contenedores: 0, movimientos: 0 };
+  const pl2: IndicadorDiario = { fecha, org: 'PL2', picking: 0, recepcion: 0, contenedores: 0 };
+  const pl3: IndicadorDiario = { fecha, org: 'PL3', picking: 0, recepcion: 0, contenedores: 0 };
 
   const lpnSetPL2 = new Set<string>();
   const lpnSetPL3 = new Set<string>();
@@ -119,10 +129,6 @@ export function buildResumen(
         lpnSet.add(mov.lpnContenido);
       }
     }
-
-    if (isMovimientoTransfer(mov)) {
-      entry.movimientos += Math.abs(mov.cantidad);
-    }
   }
 
   pl2.contenedores = lpnSetPL2.size;
@@ -134,80 +140,33 @@ export function buildResumen(
     picking: pl2.picking + pl3.picking,
     recepcion: pl2.recepcion + pl3.recepcion,
     contenedores: pl2.contenedores + pl3.contenedores,
-    movimientos: pl2.movimientos + pl3.movimientos,
   };
 
   return [pl2, pl3, total];
 }
 
 export function getTurnoBreakdown(movimientos: MovimientoRaw[]): TurnoBreakdown[] {
-  const turnoMap = new Map<string, { picking: number; recepcion: number }>();
+  const turnoMap = new Map<string, number>();
 
   for (const mov of movimientos) {
+    if (!isPicking(mov)) continue;
     const turno = mov.turno;
-
-    let isP = false;
-    let isR = false;
-
-    if (isPicking(mov)) isP = true;
-    if (isRecepcion(mov)) isR = true;
-
-    if (!isP && !isR) continue;
-
-    let entry = turnoMap.get(turno);
-    if (!entry) {
-      entry = { picking: 0, recepcion: 0 };
-      turnoMap.set(turno, entry);
-    }
-
-    const absQty = Math.abs(mov.cantidad);
-    if (isP) entry.picking += absQty;
-    if (isR) entry.recepcion += absQty;
+    turnoMap.set(turno, (turnoMap.get(turno) ?? 0) + Math.abs(mov.cantidad));
   }
 
-  return Array.from(turnoMap.entries()).map(([turno, data]) => ({
+  return Array.from(turnoMap.entries()).map(([turno, picking]) => ({
     turno,
-    picking: data.picking,
-    recepcion: data.recepcion,
+    picking,
   }));
 }
 
 /**
- * Build 30-day history from operaciones_sql.
- * Returns Total-level IndicadorDiario[].
- */
-export async function buildHistorico(fecha: string): Promise<IndicadorDiario[]> {
-  const operaciones = await getOperacionesFromSql();
-
-  const startDate = new Date(fecha);
-  startDate.setDate(startDate.getDate() - 30);
-  const startStr = startDate.toISOString().split('T')[0];
-
-  return operaciones
-    .filter(o => o.fecha >= startStr && o.fecha <= fecha)
-    .map(o => ({
-      fecha: o.fecha,
-      org: 'Total' as const,
-      picking: o.picking,
-      recepcion: o.pallets_in,
-      contenedores: o.contenedores,
-      movimientos: 0,
-    }))
-    .sort((a, b) => a.fecha.localeCompare(b.fecha));
-}
-
-/**
  * Fetch all data for indicadores diarios.
- * Called once from the API route.
  */
 export async function fetchAllIndicadoresData(fecha: string) {
-  const [movimientos, historico] = await Promise.all([
-    getMovimientosDelDia(fecha),
-    buildHistorico(fecha),
-  ]);
-
+  const movimientos = await getMovimientosDelDia(fecha);
   const resumen = buildResumen(fecha, movimientos);
   const turno = getTurnoBreakdown(movimientos);
 
-  return { resumen, turno, movimientos, historico };
+  return { resumen, turno, movimientos };
 }

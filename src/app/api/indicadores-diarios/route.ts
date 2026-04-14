@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchAllIndicadoresData } from '@/services/indicadores.service';
 
+export const dynamic = 'force-dynamic';
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function GET(request: NextRequest) {

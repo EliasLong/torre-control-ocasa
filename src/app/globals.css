@@ -1,5 +1,21 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+/* shadcn/ui compatibility: map Tailwind utility class names to design system tokens */
+@theme {
+  --color-background: var(--color-bg-primary);
+  --color-foreground: var(--color-text-primary);
+  --color-card: var(--color-bg-card);
+  --color-card-foreground: var(--color-text-primary);
+  --color-primary: var(--color-accent-cyan);
+  --color-primary-foreground: #ffffff;
+  --color-muted: var(--color-bg-surface);
+  --color-muted-foreground: var(--color-text-muted);
+  --color-border: var(--color-border);
+  --color-input: var(--color-bg-surface);
+  --color-ring: var(--color-accent-cyan);
+  --radius: 0.5rem;
+}
 
 :root {
   /* OCASA Brand Colors */

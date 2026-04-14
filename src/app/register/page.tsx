@@ -14,7 +14,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
 
@@ -27,7 +27,7 @@ export default function RegisterPage() {
       return;
     }
 
-    const result = register(email, name, password);
+    const result = await register(email, name, password);
     if (!result.ok) {
       setError(result.error ?? 'Error al registrarse');
       return;

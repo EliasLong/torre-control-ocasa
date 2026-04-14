@@ -56,7 +56,15 @@ const fetcher = (url: string) => fetch(url).then(res => {
   return res.json() as Promise<OperacionalDashboardData>;
 });
 
-const DEFAULT_RANGE: DateRange = { from: '2026-03-01', to: '2026-03-30' };
+function getDefaultRange(): DateRange {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return { from: `${y}-${m}-01`, to: `${y}-${m}-${d}` };
+}
+
+const DEFAULT_RANGE: DateRange = getDefaultRange();
 const DEFAULT_CAPACIDAD = 2800;
 const DEFAULT_OBJETIVOS = { contenedores: 150, pallets_in: 6800, picking: 43530, pallets_out: 8944 };
 
@@ -65,7 +73,7 @@ export default function OperacionalPage() {
   const [capacidadPicking, setCapacidadPicking] = useState(DEFAULT_CAPACIDAD);
 
   const apiUrl = `/api/operacional?from=${dateRange.from}&to=${dateRange.to}`;
-  const { data, error, isLoading } = useSWR(apiUrl, fetcher, { keepPreviousData: true });
+  const { data, error, isLoading } = useSWR(apiUrl, fetcher, { keepPreviousData: true, refreshInterval: 60000 });
 
   const palletsOut = data?.palletsOut ?? [];
   const operaciones = data?.operaciones ?? [];

@@ -8,8 +8,9 @@ import { SubTabs } from '@/components/indicadores/SubTabs';
 import { PickingTab } from '@/components/indicadores/PickingTab';
 import { RecepcionTab } from '@/components/indicadores/RecepcionTab';
 import { MovimientosTab } from '@/components/indicadores/MovimientosTab';
-import { PortonesTab } from '@/components/indicadores/PortonesTab';
-import { ResumenTab } from '@/components/indicadores/ResumenTab';
+import { RmaTab } from '@/components/indicadores/RmaTab';
+import { CamionesTab } from '@/components/indicadores/CamionesTab';
+import { OcupacionTab } from '@/components/indicadores/OcupacionTab';
 import type { IndicadoresDiariosData, IndicadorDiario } from '@/types';
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -21,8 +22,9 @@ const SUB_TABS = [
   { id: 'picking', label: 'Picking' },
   { id: 'recepcion', label: 'Recepcion' },
   { id: 'movimientos', label: 'Movimientos' },
-  { id: 'portones', label: 'Portones' },
-  { id: 'resumen', label: 'Resumen' },
+  { id: 'rma', label: 'RMA' },
+  { id: 'ocupacion', label: 'Ocupacion' },
+  { id: 'camiones', label: 'Mov. Camiones' },
 ];
 
 /** Fecha local YYYY-MM-DD (sin UTC para evitar desfase de zona horaria) */
@@ -126,7 +128,6 @@ export default function IndicadoresDiariosPage() {
   const resumen = data?.resumen ?? [];
   const allMovimientos = data?.movimientos ?? [];
   const turno = data?.turno ?? [];
-  const historico = data?.historico ?? [];
 
   const hasActiveFilters = orgFilter !== 'ALL' || turnoFilter !== 'ALL';
 
@@ -147,23 +148,17 @@ export default function IndicadoresDiariosPage() {
     return filtered;
   }, [allMovimientos, orgFilter, turnoFilter]);
 
-  // Recalculate turno breakdown based on filtered movimientos
+  // Recalculate turno breakdown based on filtered movimientos (only picking)
   const filteredTurno = useMemo(() => {
     if (turnoFilter === 'ALL' && orgFilter === 'ALL') return turno;
-    const turnoMap = new Map<string, { picking: number; recepcion: number }>();
+    const turnoMap = new Map<string, number>();
     for (const mov of movimientos) {
-      const t = mov.turno;
       const tipo = mov.tipoTransaccion.toLowerCase();
-      const isPick = tipo === 'sales order pick' && mov.subTransferencia === 'PORTONES';
-      const isRec = mov.subinventario === 'RECEPCION';
-      if (!isPick && !isRec) continue;
-      let entry = turnoMap.get(t);
-      if (!entry) { entry = { picking: 0, recepcion: 0 }; turnoMap.set(t, entry); }
-      const qty = Math.abs(mov.cantidad);
-      if (isPick) entry.picking += qty;
-      if (isRec) entry.recepcion += qty;
+      if (tipo === 'sales order pick' && mov.subTransferencia === 'PORTONES') {
+        turnoMap.set(mov.turno, (turnoMap.get(mov.turno) ?? 0) + Math.abs(mov.cantidad));
+      }
     }
-    return Array.from(turnoMap.entries()).map(([t, d]) => ({ turno: t, picking: d.picking, recepcion: d.recepcion }));
+    return Array.from(turnoMap.entries()).map(([t, picking]) => ({ turno: t, picking }));
   }, [movimientos, turno, turnoFilter, orgFilter]);
 
   const total = useMemo(() => findByOrg(resumen, 'Total'), [resumen]);
@@ -184,7 +179,7 @@ export default function IndicadoresDiariosPage() {
     return parts.length > 0 ? parts.join(' / ') : undefined;
   }, [orgFilter, turnoFilter]);
 
-  const buildTrendValue = (field: 'picking' | 'recepcion' | 'contenedores' | 'movimientos') => {
+  const buildTrendValue = (field: 'picking' | 'recepcion' | 'contenedores') => {
     if (orgFilter !== 'ALL') return undefined;
     return `PL2: ${(pl2?.[field] ?? 0).toLocaleString()} / PL3: ${(pl3?.[field] ?? 0).toLocaleString()}`;
   };
@@ -283,10 +278,9 @@ export default function IndicadoresDiariosPage() {
           </p>
         )}
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           {isLoading ? (
             <>
-              <KPICardSkeleton />
               <KPICardSkeleton />
               <KPICardSkeleton />
               <KPICardSkeleton />
@@ -317,14 +311,6 @@ export default function IndicadoresDiariosPage() {
                 accent="amber"
                 subtitle={kpiSubtitle}
               />
-              <KPICard
-                label="Movimientos"
-                value={(kpiSource.main?.movimientos ?? 0).toLocaleString()}
-                trendValue={buildTrendValue('movimientos')}
-                trend="neutral"
-                accent="red"
-                subtitle={kpiSubtitle}
-              />
             </>
           )}
         </div>
@@ -344,8 +330,9 @@ export default function IndicadoresDiariosPage() {
               {activeTab === 'picking' && <PickingTab movimientos={movimientos} turno={filteredTurno} />}
               {activeTab === 'recepcion' && <RecepcionTab movimientos={movimientos} />}
               {activeTab === 'movimientos' && <MovimientosTab movimientos={movimientos} />}
-              {activeTab === 'portones' && <PortonesTab movimientos={movimientos} />}
-              {activeTab === 'resumen' && <ResumenTab historico={historico} />}
+              {activeTab === 'rma' && <RmaTab movimientos={movimientos} />}
+              {activeTab === 'ocupacion' && <OcupacionTab />}
+              {activeTab === 'camiones' && <CamionesTab fecha={fecha} />}
             </>
           )}
         </div>
