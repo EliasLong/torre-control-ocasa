@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 import { query } from '@/lib/sql'
 
 const SCHEMA = `
@@ -104,6 +105,29 @@ export async function POST(request: NextRequest) {
     } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         console.error('Migration error:', msg)
+        return NextResponse.json({ error: msg }, { status: 500 })
+    }
+}
+
+// Reset the admin password to the value sent as ?password=xxx
+// Protected by the same MIGRATE_SECRET header.
+export async function PATCH(request: NextRequest) {
+    const secret = request.headers.get('x-migrate-secret')
+    if (secret !== process.env.MIGRATE_SECRET) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    try {
+        const body = await request.json()
+        const email = (body.email ?? 'admin@ocasa.com').toLowerCase()
+        const password = body.password ?? 'admin123'
+        const hash = await bcrypt.hash(password, 10)
+        const rows = await query(
+            'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE email = $2 RETURNING id, email',
+            [hash, email]
+        )
+        return NextResponse.json({ ok: true, updated: rows })
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
         return NextResponse.json({ error: msg }, { status: 500 })
     }
 }
