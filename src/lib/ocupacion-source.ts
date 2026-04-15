@@ -101,6 +101,32 @@ export function computeKpis(sectores: Record<string, SectorData>): OcupacionKPIs
     }
 }
 
+export async function debugFetch(planta: Planta) {
+    const raw = await fetchSheet(planta)
+    const headers = raw[0] ?? []
+    const sampleRow = raw[1] ?? []
+    const totalRows = raw.length
+    const rows = parseRows(raw)
+    const almacenOk = rows.filter(r => r.subinventario === 'ALMACEN' && r.tipo === 'OK')
+    const uniqueSubs = [...new Set(rows.map(r => r.subinventario))]
+    const uniqueTipos = [...new Set(rows.map(r => r.tipo))]
+    const sectores = aggregateBySector(rows)
+    return {
+        apiKeyPresent: Boolean(API_KEY),
+        totalRows,
+        headers,
+        sampleRow,
+        parsedRows: rows.length,
+        uniqueSubs,
+        uniqueTipos,
+        almacenOkCount: almacenOk.length,
+        sampleParsed: rows.slice(0, 3),
+        sampleAlmacenOk: almacenOk.slice(0, 3),
+        sectorCount: Object.keys(sectores).length,
+        sectoresSample: Object.entries(sectores).slice(0, 3),
+    }
+}
+
 export async function getOcupacion(planta: Planta): Promise<OcupacionData> {
     const raw = await fetchSheet(planta)
     const rows = parseRows(raw)
