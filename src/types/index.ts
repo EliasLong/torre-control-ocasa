@@ -23,6 +23,9 @@ export interface AppUser {
 export type { Warehouse, TripType, TripStatus, TrackingTrip, B2CTrip, B2BTrip } from './tracking'
 export { TRIP_STATUS_LABELS, TRIP_STATUS_COLORS } from './tracking'
 
+// Ocupación types
+export type { Planta, SectorData, OcupacionKPIs, OcupacionData } from './ocupacion'
+
 export interface KPIData {
   label: string;
   value: string | number;
