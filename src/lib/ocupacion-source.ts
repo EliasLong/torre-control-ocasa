@@ -87,11 +87,11 @@ export function aggregateBySector(rows: RawRow[]): Record<string, SectorData> {
 }
 
 export function computeKpis(sectores: Record<string, SectorData>): OcupacionKPIs {
-    const entries = Object.values(sectores)
-    const totalCap = entries.length * CAPACIDAD_M2_POR_SECTOR
-    const totalM2 = entries.reduce((sum, s) => sum + s.m2Ocupados, 0)
-    const totalPallets = entries.reduce((sum, s) => sum + s.pallets, 0)
-    const criticos = entries.filter(s => s.pct >= CRITICAL_THRESHOLD_PCT).length
+    const conMaterial = Object.values(sectores).filter(s => s.pallets > 0)
+    const totalCap = conMaterial.length * CAPACIDAD_M2_POR_SECTOR
+    const totalM2 = conMaterial.reduce((sum, s) => sum + s.m2Ocupados, 0)
+    const totalPallets = conMaterial.reduce((sum, s) => sum + s.pallets, 0)
+    const criticos = conMaterial.filter(s => s.pct >= CRITICAL_THRESHOLD_PCT).length
 
     return {
         ocupacionGlobal: totalCap === 0 ? 0 : Math.round((totalM2 / totalCap) * 1000) / 10,

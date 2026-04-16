@@ -23,5 +23,5 @@ export const PL3_LAYOUT: string[][][] = [
 export const PL2_SECTION_LABELS = ['A', 'B', 'C']
 export const PL3_SECTION_LABELS = ['A', 'B']
 
-export const PL2_ROW_LABELS = ['Frente', 'Centro', 'Fondo']
+export const PL2_ROW_LABELS = ['Fondo', 'Centro', 'Frente']
 export const PL3_ROW_LABELS = ['Frente', 'Centro', 'Fondo']
