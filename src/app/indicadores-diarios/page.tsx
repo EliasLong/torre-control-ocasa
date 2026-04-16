@@ -11,11 +11,16 @@ import { MovimientosTab } from '@/components/indicadores/MovimientosTab';
 import { RmaTab } from '@/components/indicadores/RmaTab';
 import { CamionesTab } from '@/components/indicadores/CamionesTab';
 import { OcupacionTab } from '@/components/indicadores/OcupacionTab';
-import type { IndicadoresDiariosData, IndicadorDiario } from '@/types';
+import type { IndicadoresDiariosData, IndicadorDiario, OcupacionData } from '@/types';
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error('Error fetching data');
   return res.json() as Promise<IndicadoresDiariosData>;
+});
+
+const ocupacionFetcher = (url: string) => fetch(url).then(res => {
+  if (!res.ok) return null;
+  return res.json() as Promise<OcupacionData>;
 });
 
 const SUB_TABS = [
@@ -123,6 +128,13 @@ export default function IndicadoresDiariosPage() {
     `/api/indicadores-diarios?fecha=${fecha}`,
     fetcher,
     { keepPreviousData: true }
+  );
+
+  const ocupPlanta = orgFilter === 'PL3' ? 'pl3' : 'pl2';
+  const { data: ocupData } = useSWR(
+    `/api/ocupacion?planta=${ocupPlanta}`,
+    ocupacionFetcher,
+    { revalidateOnFocus: false }
   );
 
   const resumen = data?.resumen ?? [];
@@ -278,9 +290,10 @@ export default function IndicadoresDiariosPage() {
           </p>
         )}
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {isLoading ? (
             <>
+              <KPICardSkeleton />
               <KPICardSkeleton />
               <KPICardSkeleton />
               <KPICardSkeleton />
@@ -310,6 +323,14 @@ export default function IndicadoresDiariosPage() {
                 trend="neutral"
                 accent="amber"
                 subtitle={kpiSubtitle}
+              />
+              <KPICard
+                label="Ocupación"
+                value={ocupData ? `${ocupData.kpis.ocupacionGlobal}%` : '—'}
+                trendValue={ocupData ? `${ocupData.kpis.sectoresCriticos} sectores críticos` : undefined}
+                trend={ocupData && ocupData.kpis.ocupacionGlobal >= 80 ? 'up' : 'neutral'}
+                accent="red"
+                subtitle={orgFilter !== 'ALL' ? orgFilter : ocupPlanta.toUpperCase()}
               />
             </>
           )}

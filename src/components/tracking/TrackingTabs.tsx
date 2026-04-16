@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { B2CTable } from './B2CTable'
 import { B2BTable } from './B2BTable'
+import { PedidosPendientes } from './PedidosPendientes'
 import { useProfile } from '@/hooks/useProfile'
 import { useSearchStore } from '@/hooks/useSearchStore'
 import { formatDate, cn } from '@/lib/utils'
@@ -20,7 +21,7 @@ interface TrackingTabsProps {
     onRefresh: () => Promise<void>
 }
 
-type TabValue = 'b2c' | 'b2b'
+type TabValue = 'b2c' | 'b2b' | 'pendientes'
 
 export function TrackingTabs({ warehouse, b2cTrips, b2bTrips, onSave, onSaveBatch, onDelete, onRefresh }: TrackingTabsProps) {
     const [activeTab, setActiveTab] = useState<TabValue>('b2c')
@@ -42,7 +43,7 @@ export function TrackingTabs({ warehouse, b2cTrips, b2bTrips, onSave, onSaveBatc
 
             // Restore last tab for THIS specific warehouse
             const savedTab = localStorage.getItem(`tracking_last_tab_${warehouse.toLowerCase()}`) as TabValue
-            if (savedTab === 'b2c' || savedTab === 'b2b') {
+            if (savedTab === 'b2c' || savedTab === 'b2b' || savedTab === 'pendientes') {
                 setActiveTab(savedTab)
             }
         } catch (e) {
@@ -199,6 +200,18 @@ export function TrackingTabs({ warehouse, b2cTrips, b2bTrips, onSave, onSaveBatc
                             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
                         )}
                     </button>
+                    <button
+                        onClick={() => handleTabSwitch('pendientes')}
+                        className={`relative px-6 py-3 text-sm font-medium transition-colors ${activeTab === 'pendientes'
+                                ? 'text-foreground'
+                                : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                    >
+                        Pendientes
+                        {activeTab === 'pendientes' && (
+                            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                        )}
+                    </button>
                 </div>
             </div>
 
@@ -209,6 +222,11 @@ export function TrackingTabs({ warehouse, b2cTrips, b2bTrips, onSave, onSaveBatc
                 </div>
                 <div className={activeTab === 'b2b' ? 'block' : 'hidden'}>
                     <B2BTable trips={filteredB2B} warehouse={warehouse} onUnsavedChange={setHasUnsavedB2B} onSave={onSave} onSaveBatch={onSaveBatch} onDelete={onDelete} onRefresh={onRefresh} />
+                </div>
+                <div className={activeTab === 'pendientes' ? 'block' : 'hidden'}>
+                    <div className="p-4">
+                        <PedidosPendientes warehouse={warehouse} />
+                    </div>
                 </div>
             </div>
         </div>
