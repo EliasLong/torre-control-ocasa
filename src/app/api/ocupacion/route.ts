@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getOcupacion, debugFetch } from '@/lib/ocupacion-source'
+import { getOcupacion } from '@/lib/ocupacion-source'
 import type { Planta } from '@/types/ocupacion'
 
 function parsePlanta(value: string | null): Planta | null {
@@ -13,13 +13,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'planta must be pl2 or pl3' }, { status: 400 })
     }
 
-    const debug = request.nextUrl.searchParams.get('debug') === '1'
-
     try {
-        if (debug) {
-            const info = await debugFetch(planta)
-            return NextResponse.json(info)
-        }
         const data = await getOcupacion(planta)
         return NextResponse.json(data)
     } catch (err) {
