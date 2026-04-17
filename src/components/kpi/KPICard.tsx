@@ -26,7 +26,7 @@ export function KPICard({ label, value, unit, trend, trendValue, accent, subtitl
     >
       {/* Label + subtitle stacked (avoids collision on narrow cards) */}
       <div className="flex flex-col gap-1 min-w-0">
-        <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wide font-semibold truncate">
+        <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wide font-semibold leading-tight break-words">
           {label}
         </span>
         {subtitle && (
@@ -43,9 +43,10 @@ export function KPICard({ label, value, unit, trend, trendValue, accent, subtitl
         )}
       </div>
 
-      {/* Value — auto-shrinks via container-min-w-0 + truncate */}
+      {/* Value — nunca se corta; auto-ajusta tamaño en contenedores estrechos */}
       <span
-        className="text-2xl xl:text-3xl font-bold text-[var(--color-text-primary)] tabular-nums leading-tight truncate block"
+        className="text-xl sm:text-2xl font-bold text-[var(--color-text-primary)] tabular-nums leading-tight whitespace-nowrap block"
+        style={{ fontSize: 'clamp(1.1rem, 2.2vw, 1.75rem)' }}
         title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}
       >
         {value}
