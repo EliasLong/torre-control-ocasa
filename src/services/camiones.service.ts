@@ -31,7 +31,9 @@ function splitTimestamp(iso: string | null): { fecha: string | null; hora: strin
 
     const get = (t: string) => parts.find(p => p.type === t)?.value ?? ''
     const fecha = `${get('year')}-${get('month')}-${get('day')}`
-    const hora = `${get('hour')}:${get('minute')}`
+    const hh = get('hour').padStart(2, '0').replace('24', '00')
+    const mm = get('minute').padStart(2, '0')
+    const hora = `${hh}:${mm}`
     return { fecha, hora }
 }
 
