@@ -1,84 +1,65 @@
-import { fetchSheetRows, parseSheetDate } from '@/lib/raw-sources';
-import type { CamionMovimiento } from '@/types';
+import type { CamionMovimiento } from '@/types'
 
-// Sheet ID del registro de portones/camiones
-const SHEET_CAMIONES_ID = '1BTlpe6EtwsTjIHgqjHvJcPIj6V25GJmwaY3hlxp6lKk';
+const DOCK_V4_URL = process.env.DOCK_V4_URL ?? 'https://dock-manager-ocasa-pilar.up.railway.app'
 
-// Nombre de la pestaña — configurar via env var SHEET_CAMIONES_TAB si difiere de 'Hoja1'
-const SHEET_CAMIONES_TAB = process.env.SHEET_CAMIONES_TAB ?? 'Hoja 1';
-
-/** Encuentra el índice de una columna por su nombre de header (case-insensitive) */
-function findCol(headers: string[], name: string): number {
-  return headers.findIndex(h => h.toLowerCase().trim() === name.toLowerCase());
+interface DockTurno {
+    id: number
+    turno_id: string
+    truck: string
+    carrier: string
+    type: 'INBOUND' | 'OUTBOUND'
+    warehouse: string
+    dock: string | null
+    status: string
+    ts_entrada: string | null
+    ts_egreso: string | null
+    contenedor: string | null
+    chofer?: string
 }
 
-/**
- * Parsea un campo que puede ser "DD/MM/YYYY" o "DD/MM/YYYY HH:MM:SS" o "DD/MM/YYYY HH:MM".
- * Devuelve la fecha en YYYY-MM-DD y la hora como string, o nulls si está vacío.
- */
-function parseDateTimeField(raw: string): { fecha: string | null; hora: string | null } {
-  const trimmed = (raw ?? '').trim();
-  if (!trimmed) return { fecha: null, hora: null };
+/** Extrae YYYY-MM-DD y HH:MM en zona horaria America/Argentina/Buenos_Aires */
+function splitTimestamp(iso: string | null): { fecha: string | null; hora: string | null } {
+    if (!iso) return { fecha: null, hora: null }
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return { fecha: null, hora: null }
 
-  const spaceIdx = trimmed.indexOf(' ');
-  const datePart = spaceIdx !== -1 ? trimmed.slice(0, spaceIdx) : trimmed;
-  const timePart = spaceIdx !== -1 ? trimmed.slice(spaceIdx + 1).trim() : null;
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(d)
 
-  const fecha = parseSheetDate(datePart);
-  // Normalizar hora a HH:MM (quitar segundos si los hay)
-  const hora = timePart ? timePart.slice(0, 5) : null;
+    const get = (t: string) => parts.find(p => p.type === t)?.value ?? ''
+    const fecha = `${get('year')}-${get('month')}-${get('day')}`
+    const hora = `${get('hour')}:${get('minute')}`
+    return { fecha, hora }
+}
 
-  return { fecha, hora };
+function mapTurno(t: DockTurno): CamionMovimiento {
+    const entrada = splitTimestamp(t.ts_entrada)
+    const egreso = splitTimestamp(t.ts_egreso)
+    return {
+        patente: t.truck ?? '',
+        contenedor: t.contenedor ?? null,
+        empresa: t.carrier ?? '',
+        fechaIngreso: entrada.fecha ?? '',
+        horaIngreso: entrada.hora,
+        fechaEgreso: egreso.fecha,
+        horaEgreso: egreso.hora,
+        estado: egreso.fecha ? 'egresado' : 'en_predio',
+    }
 }
 
 export async function getCamionesDelDia(fecha: string): Promise<CamionMovimiento[]> {
-  const rows = await fetchSheetRows(SHEET_CAMIONES_ID, SHEET_CAMIONES_TAB);
-  if (rows.length < 2) return [];
+    const url = `${DOCK_V4_URL}/api/turnos`
+    const res = await fetch(url, { next: { revalidate: 60 } })
+    if (!res.ok) {
+        throw new Error(`dock-v4 /api/turnos (${res.status})`)
+    }
+    const data = await res.json() as { success: boolean; turnos: DockTurno[] }
+    if (!data.success) throw new Error('dock-v4 response success=false')
 
-  const headers = rows[0].map(h => h.trim().toLowerCase());
-
-  const idxPatente = findCol(headers, 'patente tractor');
-  const idxContenedor = findCol(headers, 'contenedor');
-  const idxEmpresa = findCol(headers, 'empresa');
-  const idxFechaIngreso = findCol(headers, 'fecha ingreso');
-  const idxFechaEgreso = findCol(headers, 'fecha egreso');
-
-  // Si no encontró columnas críticas, loguea y devuelve vacío
-  if (idxPatente === -1 || idxFechaIngreso === -1) {
-    console.warn(
-      '[camiones.service] No se encontraron columnas requeridas en el Sheet.',
-      'Headers encontrados:', headers,
-    );
-    return [];
-  }
-
-  const result: CamionMovimiento[] = [];
-
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-
-    const { fecha: fechaIngreso, hora: horaIngreso } = parseDateTimeField(row[idxFechaIngreso] ?? '');
-
-    // Filtrar solo los que ingresaron hoy
-    if (!fechaIngreso || fechaIngreso !== fecha) continue;
-
-    const { fecha: fechaEgreso, hora: horaEgreso } = parseDateTimeField(
-      idxFechaEgreso !== -1 ? (row[idxFechaEgreso] ?? '') : ''
-    );
-
-    const contenedorRaw = idxContenedor !== -1 ? (row[idxContenedor] ?? '').trim() : '';
-
-    result.push({
-      patente: idxPatente !== -1 ? (row[idxPatente] ?? '').trim() : '',
-      contenedor: contenedorRaw || null,
-      empresa: idxEmpresa !== -1 ? (row[idxEmpresa] ?? '').trim() : '',
-      fechaIngreso,
-      horaIngreso,
-      fechaEgreso,
-      horaEgreso,
-      estado: fechaEgreso ? 'egresado' : 'en_predio',
-    });
-  }
-
-  return result;
+    return data.turnos
+        .map(mapTurno)
+        .filter(c => c.fechaIngreso === fecha)
 }

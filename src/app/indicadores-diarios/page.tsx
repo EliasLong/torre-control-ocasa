@@ -137,6 +137,18 @@ export default function IndicadoresDiariosPage() {
     { revalidateOnFocus: false }
   );
 
+  const { data: camionesData } = useSWR(
+    `/api/camiones?fecha=${fecha}`,
+    (url: string) => fetch(url).then(r => r.ok ? r.json() : null),
+    { revalidateOnFocus: false, refreshInterval: 60_000 }
+  );
+
+  const { data: iraData } = useSWR(
+    '/api/ira',
+    (url: string) => fetch(url).then(r => r.ok ? r.json() : null),
+    { revalidateOnFocus: false }
+  );
+
   const resumen = data?.resumen ?? [];
   const allMovimientos = data?.movimientos ?? [];
   const turno = data?.turno ?? [];
@@ -290,9 +302,11 @@ export default function IndicadoresDiariosPage() {
           </p>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           {isLoading ? (
             <>
+              <KPICardSkeleton />
+              <KPICardSkeleton />
               <KPICardSkeleton />
               <KPICardSkeleton />
               <KPICardSkeleton />
@@ -331,6 +345,26 @@ export default function IndicadoresDiariosPage() {
                 trend={ocupData && ocupData.kpis.ocupacionGlobal >= 80 ? 'up' : 'neutral'}
                 accent="red"
                 subtitle={orgFilter !== 'ALL' ? orgFilter : ocupPlanta.toUpperCase()}
+              />
+              <KPICard
+                label="IRA"
+                value={iraData?.finalIRA != null ? `${iraData.finalIRA.toFixed(1)}%` : '—'}
+                trendValue={iraData?.totalLogical ? `${iraData.matchedSkus}/${iraData.totalLogical} SKUs` : undefined}
+                trend="neutral"
+                accent="cyan"
+                subtitle={iraData ? 'Inventario' : 'sin datos'}
+              />
+              <KPICard
+                label="Camiones"
+                value={(camionesData?.camiones?.length ?? 0).toLocaleString()}
+                trendValue={
+                  camionesData?.camiones
+                    ? `${camionesData.camiones.filter((c: { estado: string }) => c.estado === 'en_predio').length} en predio`
+                    : undefined
+                }
+                trend="neutral"
+                accent="green"
+                subtitle="Ingresos hoy"
               />
             </>
           )}
