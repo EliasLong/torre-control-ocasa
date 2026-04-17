@@ -46,11 +46,20 @@ interface FinancieroResponse {
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
+/** Rango por defecto: desde el 1° del mes actual hasta hoy (zona local). */
+function defaultMonthRange(): DateRange {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return {
+    from: `${y}-${m}-01`,
+    to: `${y}-${m}-${day}`,
+  };
+}
+
 export default function FinancieroPage() {
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: '2026-03-01',
-    to: '2026-03-30',
-  });
+  const [dateRange, setDateRange] = useState<DateRange>(defaultMonthRange);
 
   const { data, error, isLoading } = useSWR<FinancieroResponse>(
     `/api/financiero?from=${dateRange.from}&to=${dateRange.to}`,
