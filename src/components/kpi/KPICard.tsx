@@ -26,7 +26,11 @@ export function KPICard({ label, value, unit, trend, trendValue, accent, subtitl
     >
       {/* Label + subtitle stacked (avoids collision on narrow cards) */}
       <div className="flex flex-col gap-1 min-w-0">
-        <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wide font-semibold leading-tight break-words">
+        <span
+          className="text-[var(--color-text-muted)] uppercase font-semibold leading-tight whitespace-nowrap overflow-hidden text-ellipsis"
+          style={{ fontSize: 'clamp(0.55rem, 0.9vw, 0.7rem)', letterSpacing: '0.02em' }}
+          title={label}
+        >
           {label}
         </span>
         {subtitle && (
