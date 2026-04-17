@@ -58,8 +58,14 @@ export function Sidebar() {
 
     return (
         <aside className="w-64 h-screen bg-[var(--color-bg-surface)] border-r border-[var(--color-border)] flex flex-col p-4 gap-1">
-            <div className="flex items-center gap-3 mb-6 px-3">
+            <div className="flex flex-col gap-1.5 mb-6 px-3">
                 <Image src="/logo_ocasa.png" alt="OCASA" width={140} height={40} priority />
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] leading-tight">
+                    Torre de Control
+                </p>
+                <p className="text-[10px] text-[var(--color-text-muted)]/70 leading-tight">
+                    Sucursal Pilar
+                </p>
             </div>
 
             {visibleItems.map(({ href, label, icon: Icon }) => (

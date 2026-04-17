@@ -149,6 +149,15 @@ export default function IndicadoresDiariosPage() {
     { revalidateOnFocus: false }
   );
 
+  const pedidosUrl = orgFilter === 'ALL'
+    ? '/api/pedidos-pendientes'
+    : `/api/pedidos-pendientes?planta=${orgFilter.toLowerCase()}`;
+  const { data: pedidosData } = useSWR(
+    pedidosUrl,
+    (url: string) => fetch(url).then(r => r.ok ? r.json() : null),
+    { revalidateOnFocus: false, refreshInterval: 5 * 60_000 }
+  );
+
   const resumen = data?.resumen ?? [];
   const allMovimientos = data?.movimientos ?? [];
   const turno = data?.turno ?? [];
@@ -302,9 +311,10 @@ export default function IndicadoresDiariosPage() {
           </p>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
           {isLoading ? (
             <>
+              <KPICardSkeleton />
               <KPICardSkeleton />
               <KPICardSkeleton />
               <KPICardSkeleton />
@@ -365,6 +375,14 @@ export default function IndicadoresDiariosPage() {
                 trend="neutral"
                 accent="green"
                 subtitle="Ingresos hoy"
+              />
+              <KPICard
+                label="Pedidos"
+                value={pedidosData?.total != null ? pedidosData.total.toLocaleString() : '—'}
+                trendValue={pedidosData?.vencidos != null ? `${pedidosData.vencidos} vencidos` : undefined}
+                trend={pedidosData?.vencidos > 0 ? 'up' : 'neutral'}
+                accent="amber"
+                subtitle="A procesar"
               />
             </>
           )}
