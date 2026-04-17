@@ -42,7 +42,7 @@ const NAV_ITEMS: NavItem[] = [
 const TOOL_ITEMS: ToolItem[] = [
     { label: 'Incidencias', icon: AlertTriangle, href: '/herramientas/incidencias', tab: 'incidencias' },
     { label: 'Dock Manager', icon: Package, href: 'https://dock-manager-ocasa-pilar.up.railway.app/operador', external: true },
-    { label: 'Inventario', icon: ClipboardList, href: 'https://inventario-app.vercel.app', external: true },
+    { label: 'Inventario', icon: ClipboardList, href: 'https://inventario-app-umber.vercel.app', external: true },
 ];
 
 export function Sidebar() {

@@ -23,6 +23,16 @@ export function formatCurrency(value: number): string {
   return `$${Math.round(value).toLocaleString('es-AR')}`;
 }
 
+/** Currency abreviado: $12.3M, $456K, $1.2B. Ideal para KPI cards compactas. */
+export function formatCompactCurrency(value: number): string {
+  const sign = value < 0 ? '-' : '';
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000_000) return `${sign}$${(abs / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
+  return `${sign}$${Math.round(abs).toLocaleString('es-AR')}`;
+}
+
 export function formatPercent(value: number, decimals = 2): string {
   return `${value.toFixed(decimals)}%`;
 }

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { DateRange, FacturacionDetalle, CostosDetalle } from '@/types';
-import { formatCurrency, formatPercent } from '@/lib/calculations';
+import { formatCurrency, formatCompactCurrency, formatPercent } from '@/lib/calculations';
 import { KPICard } from '@/components/kpi/KPICard';
 import { CostosBreakdown } from '@/components/kpi/CostosBreakdown';
 import { DateRangeFilter } from '@/components/filters/DateRangeFilter';
@@ -90,21 +90,21 @@ export default function FinancieroPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           label="Facturación Total"
-          value={formatCurrency(data.kpis.facturacion)}
+          value={formatCompactCurrency(data.kpis.facturacion)}
           trend="up"
-          trendValue="periodo seleccionado"
+          trendValue={formatCurrency(data.kpis.facturacion)}
         />
         <KPICard
           label="Costos Totales"
-          value={formatCurrency(data.kpis.costos)}
+          value={formatCompactCurrency(data.kpis.costos)}
           trend="neutral"
-          trendValue="periodo seleccionado"
+          trendValue={formatCurrency(data.kpis.costos)}
         />
         <KPICard
           label="Resultado"
-          value={formatCurrency(data.kpis.resultado)}
+          value={formatCompactCurrency(data.kpis.resultado)}
           trend={resultadoTrend}
-          trendValue={data.kpis.resultado >= 0 ? 'positivo' : 'negativo'}
+          trendValue={formatCurrency(data.kpis.resultado)}
         />
         <KPICard
           label="Margen"
