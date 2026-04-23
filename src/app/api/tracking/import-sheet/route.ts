@@ -7,8 +7,9 @@ import * as xlsx from 'xlsx'
 const SHEET_ID = '1QwWUe34Yn0BnTfb8WckxzDRmEKJfuATPse9g76VM3n8'
 
 export async function GET(request: NextRequest) {
-    const user = await getSessionUser()
-    if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    // LOGIN TEMPORALMENTE DESACTIVADO
+    // const user = await getSessionUser()
+    // if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
     const { searchParams } = new URL(request.url)
     const warehouse = searchParams.get('warehouse')
@@ -79,12 +80,17 @@ export async function GET(request: NextRequest) {
             // Patente           | D (3)
             // Depósito          | J (9)
 
+            // Col J (9) = deposito
+            // Col M (12) = numero de viaje
+            // Col O (14) = cliente
+
             let fecha = cols[0] ? String(cols[0]).trim() : ''
             const transporte = cols[1] ? String(cols[1]).trim() : ''
             const patente = cols[3] ? String(cols[3]).trim() : ''
+            const tipo = cols[4] ? String(cols[4]).trim().toUpperCase() : '' // Col E = tipo (B2C / B2B)
             const deposito = cols[9] ? String(cols[9]).trim() : ''
             const numeroViaje = cols[12] ? String(cols[12]).trim() : ''
-            const retira = cols[14] ? String(cols[14]).trim() : '' // Col O es Cliente/Retira
+            const retira = cols[14] ? String(cols[14]).trim() : '' // Col O = cliente/retira
 
             if (fecha.includes('/')) {
                 const parts = fecha.split('/')
@@ -99,8 +105,8 @@ export async function GET(request: NextRequest) {
             // Only today's trips
             if (fecha !== todayStr) continue;
 
-            // Determine if B2C based on Cliente (Column O / 14)
-            const isB2C = retira.toUpperCase() === 'B2C'
+            // Determine trip type from column E (tipo), fallback to checking retira
+            const isB2C = tipo === 'B2C' || (tipo === '' && retira.toUpperCase() === 'B2C')
 
             trips.push({
                 trip_type: isB2C ? 'b2c' : 'b2b',
