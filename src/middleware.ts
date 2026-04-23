@@ -21,20 +21,23 @@ export async function middleware(request: NextRequest) {
         return NextResponse.next()
     }
 
-    const token = request.cookies.get('session')?.value
+    // LOGIN TEMPORALMENTE DESACTIVADO
+    // const token = request.cookies.get('session')?.value
 
-    if (!token) {
-        return NextResponse.redirect(new URL('/login', request.url))
-    }
+    // if (!token) {
+    //     return NextResponse.redirect(new URL('/login', request.url))
+    // }
 
-    try {
-        await jwtVerify(token, getSecret())
-        return NextResponse.next()
-    } catch {
-        const response = NextResponse.redirect(new URL('/login', request.url))
-        response.cookies.delete('session')
-        return response
-    }
+    // try {
+    //     await jwtVerify(token, getSecret())
+    //     return NextResponse.next()
+    // } catch {
+    //     const response = NextResponse.redirect(new URL('/login', request.url))
+    //     response.cookies.delete('session')
+    //     return response
+    // }
+
+    return NextResponse.next()
 }
 
 export const config = {
