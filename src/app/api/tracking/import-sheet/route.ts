@@ -105,8 +105,8 @@ export async function GET(request: NextRequest) {
             // Only today's trips
             if (fecha !== todayStr) continue;
 
-            // Determine trip type from column E (tipo), fallback to checking retira
-            const isB2C = tipo === 'B2C' || (tipo === '' && retira.toUpperCase() === 'B2C')
+            // Determine trip type: B2C si la columna O comienza con "B2C"
+            const isB2C = retira.toUpperCase().startsWith('B2C')
 
             trips.push({
                 trip_type: isB2C ? 'b2c' : 'b2b',
