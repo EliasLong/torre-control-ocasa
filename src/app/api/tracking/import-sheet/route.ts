@@ -3,8 +3,17 @@ import { getSessionUser } from '@/lib/auth-server'
 import { query } from '@/lib/sql'
 import * as xlsx from 'xlsx'
 
-// ID del Google Sheet: 1QwWUe34Yn0BnTfb8WckxzDRmEKJfuATPse9g76VM3n8
-const SHEET_ID = '1QwWUe34Yn0BnTfb8WckxzDRmEKJfuATPse9g76VM3n8'
+/** Convierte fecha en formato DD/MM/YYYY a un objeto Date (solo fecha, sin hora) */
+function parseDMY(str: string): Date | null {
+    const parts = str.split('/')
+    if (parts.length !== 3) return null
+    const [d, m, y] = parts
+    const date = new Date(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T00:00:00`)
+    return isNaN(date.getTime()) ? null : date
+}
+
+// ID del Google Sheet (prioriza env variable específica para Tracking)
+const SHEET_ID = process.env.TRACKING_SHEET_ID || '1QwWUe34Yn0BnTfb8WckxzDRmEKJfuATPse9g76VM3n8'
 
 export async function GET(request: NextRequest) {
     // LOGIN TEMPORALMENTE DESACTIVADO
@@ -61,12 +70,22 @@ export async function GET(request: NextRequest) {
 
         const trips = []
 
-        // Calculate today's date in 'DD/MM/YYYY' format to match sheet
-        const today = new Date()
-        const yyyy = today.getFullYear()
-        const mm = String(today.getMonth() + 1).padStart(2, '0')
-        const dd = String(today.getDate()).padStart(2, '0')
-        const todayStr = `${dd}/${mm}/${yyyy}`
+        // Fecha de hoy a medianoche (sin hora) para comparar >= hoy
+        const todayStart = new Date()
+        todayStart.setHours(0, 0, 0, 0)
+
+        // Consultar trip_numbers ya existentes en la DB para este warehouse (excluyendo borrados)
+        let existingTripNumbers = new Set<string>()
+        try {
+            const existingRows = await query<{ trip_number: string }>(
+                `SELECT DISTINCT trip_number FROM tracking_trips WHERE warehouse = $1 AND status != 'deleted' AND trip_number IS NOT NULL AND trip_number != ''`,
+                [warehouse]
+            )
+            existingTripNumbers = new Set(existingRows.map(r => r.trip_number))
+        } catch (dbError) {
+            console.error("Database connection error in import-sheet:", dbError)
+            // Continue without DB filtering if DB is not available
+        }
 
         for (const cols of parsedRows) {
             if (!cols || cols.length < 15) continue; // Skip incomplete rows
@@ -80,18 +99,14 @@ export async function GET(request: NextRequest) {
             // Patente           | D (3)
             // Depósito          | J (9)
 
-            // Col J (9) = deposito
-            // Col M (12) = numero de viaje
-            // Col O (14) = cliente
-
             let fecha = cols[0] ? String(cols[0]).trim() : ''
             const transporte = cols[1] ? String(cols[1]).trim() : ''
             const patente = cols[3] ? String(cols[3]).trim() : ''
-            const tipo = cols[4] ? String(cols[4]).trim().toUpperCase() : '' // Col E = tipo (B2C / B2B)
             const deposito = cols[9] ? String(cols[9]).trim() : ''
             const numeroViaje = cols[12] ? String(cols[12]).trim() : ''
             const retira = cols[14] ? String(cols[14]).trim() : '' // Col O = cliente/retira
 
+            // Normalizar fecha a DD/MM/YYYY
             if (fecha.includes('/')) {
                 const parts = fecha.split('/')
                 if (parts.length === 3) {
@@ -102,15 +117,26 @@ export async function GET(request: NextRequest) {
 
             if (deposito.toUpperCase() !== warehouse.toUpperCase()) continue;
 
-            // Only today's trips
-            if (fecha !== todayStr) continue;
+            // Solo viajes desde hoy en adelante (>= hoy)
+            const fechaDate = parseDMY(fecha)
+            if (!fechaDate || fechaDate < todayStart) {
+                // console.log(`[import-sheet] Skipping old/invalid date: ${fecha}`)
+                continue;
+            }
+
+            // Saltar si el número de viaje ya existe en la DB
+            if (!numeroViaje || existingTripNumbers.has(numeroViaje)) continue;
 
             // Determine trip type: B2C si la columna O comienza con "B2C"
             const isB2C = retira.toUpperCase().startsWith('B2C')
 
+            // Convertir fecha del sheet a formato ISO para la DB (YYYY-MM-DD)
+            const parts = fecha.split('/')
+            const fechaISO = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+
             trips.push({
                 trip_type: isB2C ? 'b2c' : 'b2b',
-                date: new Date().toISOString(),
+                date: fechaISO,
                 carrier: transporte,
                 retira: retira,
                 client: retira,
@@ -120,8 +146,11 @@ export async function GET(request: NextRequest) {
                 pallets: 0,
                 task_count: 0
             })
+
+            if (trips.length >= 100) break;
         }
 
+        console.log(`[import-sheet] SUCCESS: Found ${trips.length} trips for ${warehouse}`)
         return NextResponse.json(trips)
 
     } catch (error) {

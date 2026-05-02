@@ -3,6 +3,10 @@
     {
       "path": "/api/sync",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/evento-snapshot",
+      "schedule": "0 2 * * *"
     }
   ]
 }

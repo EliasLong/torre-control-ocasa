@@ -44,7 +44,10 @@ interface FinancieroResponse {
   dailyData: DailyDataPoint[];
 }
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+const fetcher = (url: string) => fetch(url).then(res => {
+  if (!res.ok) throw new Error('Error fetching data');
+  return res.json();
+});
 
 /** Rango por defecto: desde el 1° del mes actual hasta hoy (zona local). */
 function defaultMonthRange(): DateRange {
@@ -74,7 +77,7 @@ export default function FinancieroPage() {
     );
   }
 
-  if (isLoading || !data) {
+  if (isLoading || !data || !data.kpis) {
     return (
       <div className="flex items-center justify-center h-64 text-[var(--color-text-muted)]">
         Cargando datos financieros...

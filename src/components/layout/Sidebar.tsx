@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
     BarChart3, CalendarDays, DollarSign, TrendingDown, Grid3X3, Settings,
     LogOut, FileSpreadsheet, Truck, AlertTriangle, Wrench, ChevronDown,
-    ExternalLink, Package, ClipboardList
+    ExternalLink, Package, ClipboardList, CalendarCheck
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { canAccessTab, isAdmin } from '@/lib/auth';
@@ -37,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
     { href: '/abc-xyz', label: 'ABC-XYZ', icon: Grid3X3, tab: 'abc-xyz' },
     { href: '/reportes', label: 'Reportes', icon: FileSpreadsheet, tab: 'reportes' },
     { href: '/tracking', label: 'Tracking', icon: Truck, tab: 'tracking' },
+    { href: '/evento', label: 'Evento', icon: CalendarCheck, tab: 'evento' },
 ];
 
 const TOOL_ITEMS: ToolItem[] = [

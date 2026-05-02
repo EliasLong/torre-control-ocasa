@@ -69,9 +69,14 @@ export async function GET(request: NextRequest) {
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
-    const rows = await query(`SELECT * FROM tracking_trips ${where} ORDER BY created_at DESC`, params)
-
-    return NextResponse.json(rows.map(rowToTrip))
+    
+    try {
+        const rows = await query(`SELECT * FROM tracking_trips ${where} ORDER BY created_at DESC`, params)
+        return NextResponse.json(rows.map(rowToTrip))
+    } catch (error) {
+        console.error('Error in GET /api/tracking:', error)
+        return NextResponse.json({ error: 'Error al obtener los viajes' }, { status: 500 })
+    }
 }
 
 export async function POST(request: NextRequest) {
@@ -80,33 +85,37 @@ export async function POST(request: NextRequest) {
 
     const b = await request.json() as Partial<TrackingTrip>
 
-    const rows = await query(
-        `INSERT INTO tracking_trips (
-            warehouse, trip_type, date, carrier, trip_number, port,
-            task_count, operators, documents_printed, status, created_by,
-            pallet_count, pallets_dispatched, labeler,
-            vehicle_plate, client, client_shift, pallets, detail, comments, bulk_cargo, retira
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
-        RETURNING *`,
-        [
-            b.warehouse, b.trip_type, b.date, b.carrier ?? '', b.trip_number ?? '', b.port ?? '',
-            b.task_count ?? 0, JSON.stringify(b.operators ?? []),
-            b.documents_printed ?? false, b.status ?? 'pending', user.id,
-            (b as Record<string, unknown>).pallet_count ?? null,
-            (b as Record<string, unknown>).pallets_dispatched ?? null,
-            (b as Record<string, unknown>).labeler ?? null,
-            (b as Record<string, unknown>).vehicle_plate ?? null,
-            (b as Record<string, unknown>).client ?? null,
-            (b as Record<string, unknown>).client_shift ?? null,
-            (b as Record<string, unknown>).pallets ?? null,
-            (b as Record<string, unknown>).detail ?? null,
-            (b as Record<string, unknown>).comments ?? null,
-            (b as Record<string, unknown>).bulk_cargo ?? null,
-            (b as Record<string, unknown>).retira ?? null,
-        ]
-    )
-
-    return NextResponse.json(rowToTrip(rows[0]), { status: 201 })
+    try {
+        const rows = await query(
+            `INSERT INTO tracking_trips (
+                warehouse, trip_type, date, carrier, trip_number, port,
+                task_count, operators, documents_printed, status, created_by,
+                pallet_count, pallets_dispatched, labeler,
+                vehicle_plate, client, client_shift, pallets, detail, comments, bulk_cargo, retira
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+            RETURNING *`,
+            [
+                b.warehouse, b.trip_type, b.date, b.carrier ?? '', b.trip_number ?? '', b.port ?? '',
+                b.task_count ?? 0, JSON.stringify(b.operators ?? []),
+                b.documents_printed ?? false, b.status ?? 'pending', user.id,
+                (b as Record<string, unknown>).pallet_count ?? null,
+                (b as Record<string, unknown>).pallets_dispatched ?? null,
+                (b as Record<string, unknown>).labeler ?? null,
+                (b as Record<string, unknown>).vehicle_plate ?? null,
+                (b as Record<string, unknown>).client ?? null,
+                (b as Record<string, unknown>).client_shift ?? null,
+                (b as Record<string, unknown>).pallets ?? null,
+                (b as Record<string, unknown>).detail ?? null,
+                (b as Record<string, unknown>).comments ?? null,
+                (b as Record<string, unknown>).bulk_cargo ?? null,
+                (b as Record<string, unknown>).retira ?? null,
+            ]
+        )
+        return NextResponse.json(rowToTrip(rows[0]), { status: 201 })
+    } catch (error) {
+        console.error('Error in POST /api/tracking:', error)
+        return NextResponse.json({ error: 'Error al guardar el viaje' }, { status: 500 })
+    }
 }
 
 export async function PUT(request: NextRequest) {
@@ -141,12 +150,16 @@ export async function PUT(request: NextRequest) {
     }
 
     params.push(id)
-    const rows = await query(
-        `UPDATE tracking_trips SET ${setClauses.join(', ')} WHERE id = $${params.length} RETURNING *`,
-        params
-    )
-
-    return NextResponse.json(rowToTrip(rows[0]))
+    try {
+        const rows = await query(
+            `UPDATE tracking_trips SET ${setClauses.join(', ')} WHERE id = $${params.length} RETURNING *`,
+            params
+        )
+        return NextResponse.json(rowToTrip(rows[0]))
+    } catch (error) {
+        console.error('Error in PUT /api/tracking:', error)
+        return NextResponse.json({ error: 'Error al actualizar el viaje' }, { status: 500 })
+    }
 }
 
 export async function DELETE(request: NextRequest) {
@@ -160,21 +173,25 @@ export async function DELETE(request: NextRequest) {
 
     if (!id) return NextResponse.json({ error: 'id es requerido' }, { status: 400 })
 
-    if (isPermanent) {
-        if (user.role !== 'superadmin' && user.role !== 'admin') {
-            return NextResponse.json({ error: 'Se requieren permisos de administrador para borrado permanente' }, { status: 403 })
-        }
-        if (id === 'all') {
-            const params: unknown[] = []
-            let extra = ''
-            if (warehouse) { params.push(warehouse); extra = ` AND warehouse = $${params.length}` }
-            await query(`DELETE FROM tracking_trips WHERE status = 'deleted'${extra}`, params)
+    try {
+        if (isPermanent) {
+            if (user.role !== 'superadmin' && user.role !== 'admin') {
+                return NextResponse.json({ error: 'Se requieren permisos de administrador para borrado permanente' }, { status: 403 })
+            }
+            if (id === 'all') {
+                const params: unknown[] = []
+                let extra = ''
+                if (warehouse) { params.push(warehouse); extra = ` AND warehouse = $${params.length}` }
+                await query(`DELETE FROM tracking_trips WHERE status = 'deleted'${extra}`, params)
+            } else {
+                await query('DELETE FROM tracking_trips WHERE id = $1', [id])
+            }
         } else {
-            await query('DELETE FROM tracking_trips WHERE id = $1', [id])
+            await query("UPDATE tracking_trips SET status = 'deleted', updated_at = NOW() WHERE id = $1", [id])
         }
-    } else {
-        await query("UPDATE tracking_trips SET status = 'deleted', updated_at = NOW() WHERE id = $1", [id])
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        console.error('Error in DELETE /api/tracking:', error)
+        return NextResponse.json({ error: 'Error al eliminar el viaje' }, { status: 500 })
     }
-
-    return NextResponse.json({ success: true })
 }

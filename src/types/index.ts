@@ -2,7 +2,7 @@ export type Nave = 'PL2' | 'PL3' | 'todas';
 
 // --- Auth & Users ---
 
-export type TabPermission = 'operacional' | 'financiero' | 'merma' | 'abc-xyz' | 'torre-control' | 'reportes' | 'indicadores-diarios' | 'tracking' | 'estado-del-turno' | 'incidencias';
+export type TabPermission = 'operacional' | 'financiero' | 'merma' | 'abc-xyz' | 'torre-control' | 'reportes' | 'indicadores-diarios' | 'tracking' | 'estado-del-turno' | 'incidencias' | 'evento';
 
 export type UserRole = 'superadmin' | 'admin' | 'viewer';
 
@@ -148,6 +148,7 @@ export interface MovimientoRaw {
   usuario: string;
   turno: string;
   lpnContenido: string;
+  cliente: string;
 }
 
 export interface IndicadorDiario {

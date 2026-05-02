@@ -35,10 +35,22 @@ export function useTrackingTrips(warehouse?: Warehouse) {
             body: JSON.stringify({ ...tripData, warehouse: tripData.warehouse || warehouse }),
         })
         if (!res.ok) {
-            const err = await res.json()
-            throw new Error(err.error || 'Error saving trip')
+            let errorMessage = 'Error saving trip'
+            try {
+                const err = await res.json()
+                errorMessage = err.error || errorMessage
+            } catch (e) {
+                // Fallback if response is not JSON
+                errorMessage = `Error ${res.status}: ${res.statusText}`
+            }
+            throw new Error(errorMessage)
         }
-        return res.json()
+        
+        try {
+            return await res.json()
+        } catch (e) {
+            return { success: true } // Or whatever fallback makes sense
+        }
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

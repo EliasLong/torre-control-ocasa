@@ -46,6 +46,7 @@ function parseRowToMovimiento(row: string[], org: 'PL2' | 'PL3'): MovimientoRaw 
     usuario: (row[14] || '').trim(),
     turno,
     lpnContenido: (row[16] || '').trim(),
+    cliente: (row[19] || '').trim().toUpperCase(),
   };
 }
 
@@ -94,6 +95,28 @@ export async function getMovimientosDelDia(fecha: string): Promise<MovimientoRaw
   for (let i = 1; i < pl3Rows.length; i++) {
     const mov = parseRowToMovimiento(pl3Rows[i], 'PL3');
     if (mov && mov.fecha === fecha) movimientos.push(mov);
+  }
+
+  return movimientos;
+}
+
+export async function getMovimientosPorFechas(fechas: string[]): Promise<MovimientoRaw[]> {
+  const [pl2Rows, pl3Rows] = await Promise.all([
+    fetchSheetRows(SHEET_MOVIMIENTOS, 'PL2'),
+    fetchSheetRows(SHEET_MOVIMIENTOS, 'PL3'),
+  ]);
+
+  const setFechas = new Set(fechas);
+  const movimientos: MovimientoRaw[] = [];
+
+  for (let i = 1; i < pl2Rows.length; i++) {
+    const mov = parseRowToMovimiento(pl2Rows[i], 'PL2');
+    if (mov && setFechas.has(mov.fecha)) movimientos.push(mov);
+  }
+
+  for (let i = 1; i < pl3Rows.length; i++) {
+    const mov = parseRowToMovimiento(pl3Rows[i], 'PL3');
+    if (mov && setFechas.has(mov.fecha)) movimientos.push(mov);
   }
 
   return movimientos;

@@ -96,3 +96,22 @@ CREATE TABLE IF NOT EXISTS incidencias (
 
 CREATE INDEX IF NOT EXISTS ix_incidencias_warehouse ON incidencias(warehouse);
 CREATE INDEX IF NOT EXISTS ix_incidencias_estado    ON incidencias(estado);
+
+-- ============================================================
+-- EVENTO KPI SNAPSHOTS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS evento_kpi_snapshots (
+    date                DATE        NOT NULL PRIMARY KEY,
+    bultos_b2c          INTEGER     NOT NULL DEFAULT 0,
+    bultos_b2b          INTEGER     NOT NULL DEFAULT 0,
+    pallets_b2c         INTEGER     NOT NULL DEFAULT 0,
+    pallets_b2b         INTEGER     NOT NULL DEFAULT 0,
+    trips_b2c           INTEGER     NOT NULL DEFAULT 0,
+    trips_b2b           INTEGER     NOT NULL DEFAULT 0,
+    despachados_bultos  INTEGER     NOT NULL DEFAULT 0,
+    camiones_desp_b2b   INTEGER     NOT NULL DEFAULT 0,
+    devoluciones        INTEGER     NOT NULL DEFAULT 0,
+    ingresados          INTEGER     NOT NULL DEFAULT 0,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
