@@ -192,17 +192,19 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
           <ComposedChart data={enrichedData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }} barGap={2}>
             <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
             <XAxis dataKey="fecha" {...axisProps} />
-            <YAxis {...axisProps} />
+            <YAxis {...axisProps} yAxisId="left" />
+            <YAxis {...axisProps} yAxisId="right" orientation="right" />
             <Tooltip {...tooltipStyle} />
             
             {/* Daily Bars */}
-            <Bar dataKey="bultosB2C" name="B2C" fill="#1E3A8A" radius={[2, 2, 0, 0]} barSize={14} />
-            <Bar dataKey="bultosB2B" name="B2B" fill="#7C3AED" radius={[2, 2, 0, 0]} barSize={14} />
-            <Bar dataKey="forecast" name="Forecast (Día)" fill="#CBD5E1" radius={[2, 2, 0, 0]} barSize={14} />
+            <Bar dataKey="bultosB2C" yAxisId="left" name="B2C" fill="#1E3A8A" radius={[2, 2, 0, 0]} barSize={14} />
+            <Bar dataKey="bultosB2B" yAxisId="left" name="B2B" fill="#7C3AED" radius={[2, 2, 0, 0]} barSize={14} />
+            <Bar dataKey="forecast" yAxisId="left" name="Forecast (Día)" fill="#CBD5E1" radius={[2, 2, 0, 0]} barSize={14} />
             
             {/* Final Meta Line */}
             <ReferenceLine 
               y={targetBultos} 
+              yAxisId="right"
               stroke="#64748B" 
               strokeWidth={2} 
               strokeDasharray="5 5" 
@@ -213,6 +215,7 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
             <Line
               type="monotone"
               dataKey="accForecast"
+              yAxisId="right"
               name="Progreso Forecast (Acum.)"
               stroke="#94A3B8"
               strokeWidth={2}
@@ -222,6 +225,7 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
             <Line
               type="monotone"
               dataKey="accReal"
+              yAxisId="right"
               name="Progreso Real (Acum.)"
               stroke="#10B981"
               strokeWidth={3}
