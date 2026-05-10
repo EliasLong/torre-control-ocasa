@@ -113,7 +113,22 @@ CREATE TABLE IF NOT EXISTS evento_kpi_snapshots (
     devoluciones        INTEGER     NOT NULL DEFAULT 0,
     ingresados          INTEGER     NOT NULL DEFAULT 0,
     ingresados_flota    INTEGER     NOT NULL DEFAULT 0,
+    ing_reti_meli       INTEGER     NOT NULL DEFAULT 0,
+    ing_andreani        INTEGER     NOT NULL DEFAULT 0,
+    ing_flota_propia    INTEGER     NOT NULL DEFAULT 0,
+    ing_otros           INTEGER     NOT NULL DEFAULT 0,
     incidencias         INTEGER     NOT NULL DEFAULT 0,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
+-- EVENTO INGRESADOS BACKUPS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS evento_ingresados_backups (
+    id          SERIAL PRIMARY KEY,
+    date        DATE NOT NULL,
+    snapshot_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    data        JSONB NOT NULL,
+    UNIQUE(date)
 );

@@ -8,7 +8,7 @@ const SPREADSHEET_DEVOLUCIONES = '1NyuFejOKhFnu_VNvUBqoWTP6hpMUSPPd';
 const SPREADSHEET_INGRESADOS = '1NmNAOaUSnUknHLCiqPOIqaX8qdqUUzEZh0qSyZKRKJY';
 const SPREADSHEET_INCIDENCIAS = '1IABChnxxxRB9JnUe83OdNxRq6doDpDntg9j_rXxYK7s';
 
-const SHEETS = {
+export const SHEETS = {
   PL2_B2C: { id: SPREADSHEET_B2C, gid: '0', type: 'B2C' },
   PL3_B2C: { id: SPREADSHEET_B2C, gid: '2008554442', type: 'B2C' },
   PL2_B2B: { id: SPREADSHEET_B2B, gid: '1832488493', type: 'B2B' },
@@ -243,7 +243,7 @@ async function fetchTripCounts(
 
 // ── Main fetcher ───────────────────────────────────────────────────────────
 
-async function fetchSheetRows(
+export async function fetchSheetRows(
   spreadsheetId: string,
   gid: string,
   type: 'B2C' | 'B2B' | 'DEV' | 'ING' | 'INC'
@@ -311,6 +311,10 @@ export interface DayKPIs {
   devoluciones: number;
   ingresados: number;
   ingresadosFlota: number;
+  ingRetiMeli?: number;
+  ingAndreani?: number;
+  ingFlotaPropia?: number;
+  ingOtros?: number;
   incidencias: number;
 }
 
@@ -401,6 +405,10 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
         devoluciones: 0,
         ingresados: 0,
         ingresadosFlota: 0,
+        ingRetiMeli: undefined,
+        ingAndreani: undefined,
+        ingFlotaPropia: undefined,
+        ingOtros: undefined,
         incidencias: 0
       };
     });
@@ -515,6 +523,7 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
     // because the Volumen chart needs to show how the operation started that day.
     const liveValues: Record<string, {
       ingresados: number; ingresadosFlota: number;
+      ingRetiMeli?: number; ingAndreani?: number; ingFlotaPropia?: number; ingOtros?: number;
       bultosB2C: number; bultosB2B: number;
       despachadosBultos: number; camionesDespB2B: number;
       devoluciones: number; incidencias: number;
@@ -526,6 +535,10 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
         // For historical days, we MUST rely on snapshots.
         ingresados: isToday ? (volumenRetiMeli + volumenAndreani + volumenFlotaPropia + volumenOtros) : 0,
         ingresadosFlota: isToday ? volumenFlotaPropia : 0,
+        ingRetiMeli: isToday ? volumenRetiMeli : undefined,
+        ingAndreani: isToday ? volumenAndreani : undefined,
+        ingFlotaPropia: isToday ? volumenFlotaPropia : undefined,
+        ingOtros: isToday ? volumenOtros : undefined,
         bultosB2C: byDay[key]?.bultosB2C || 0,
         bultosB2B: byDay[key]?.bultosB2B || 0,
         despachadosBultos: byDay[key]?.despachadosBultos || 0,
@@ -571,27 +584,21 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
           const snapIngFlota = snap.ingresados_flota || 0;
           byDay[key].ingresados = snapIng > 0 ? snapIng : (live.ingresados || 0);
           byDay[key].ingresadosFlota = snapIngFlota > 0 ? snapIngFlota : (live.ingresadosFlota || 0);
+
+          if (snap.ing_reti_meli > 0 || snap.ing_andreani > 0 || snap.ing_flota_propia > 0 || snap.ing_otros > 0) {
+            byDay[key].ingRetiMeli = snap.ing_reti_meli;
+            byDay[key].ingAndreani = snap.ing_andreani;
+            byDay[key].ingFlotaPropia = snap.ing_flota_propia;
+            byDay[key].ingOtros = snap.ing_otros;
+          } else {
+            byDay[key].ingRetiMeli = live.ingRetiMeli;
+            byDay[key].ingAndreani = live.ingAndreani;
+            byDay[key].ingFlotaPropia = live.ingFlotaPropia;
+            byDay[key].ingOtros = live.ingOtros;
+          }
         }
       }
     }
-
-    // ── TESTING: Inject random data for D1, D2, D3, D4 ──────────────────────
-    const D_KEYS = EVENT_DAYS.slice(0, 4);
-    D_KEYS.forEach((key) => {
-      if (byDay[key]) {
-        byDay[key].bultosB2C = Math.floor(Math.random() * 1500) + 1500;
-        byDay[key].bultosB2B = Math.floor(Math.random() * 1000) + 500;
-        byDay[key].despachadosBultos = byDay[key].bultosB2C + byDay[key].bultosB2B + Math.floor(Math.random() * 500);
-        byDay[key].camionesDespB2B = Math.floor(Math.random() * 15) + 10;
-        byDay[key].devoluciones = Math.floor(Math.random() * 15) + 5;
-        byDay[key].incidencias = Math.floor(Math.random() * 10) + 1;
-        byDay[key].ingresados = Math.floor(Math.random() * 3000) + 2000;
-        byDay[key].ingresadosFlota = Math.floor(byDay[key].ingresados * 0.4);
-        byDay[key].viajesTotal = Math.floor(Math.random() * 25) + 15;
-        byDay[key].palletsB2C = Math.floor(Math.random() * 30) + 20;
-        byDay[key].palletsB2B = Math.floor(Math.random() * 25) + 15;
-      }
-    });
 
     const availableDays = Object.keys(byDay)
       .filter((day) => EVENT_DAYS.includes(day))

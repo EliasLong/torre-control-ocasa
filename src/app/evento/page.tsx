@@ -152,6 +152,10 @@ export default function EventoPage() {
       forecast: FORECAST_VALUES[index] || 0,
       ingresados: d?.ingresados || 0,
       ingresadosFlota: d?.ingresadosFlota || 0,
+      ingRetiMeli: d?.ingRetiMeli,
+      ingAndreani: d?.ingAndreani,
+      ingFlotaPropia: d?.ingFlotaPropia,
+      ingOtros: d?.ingOtros,
     };
   });
 

@@ -18,6 +18,10 @@ interface ChartDayRow {
   forecast: number;
   ingresados: number;
   ingresadosFlota: number;
+  ingRetiMeli?: number;
+  ingAndreani?: number;
+  ingFlotaPropia?: number;
+  ingOtros?: number;
 }
 
 interface EventoChartsProps {
@@ -118,6 +122,17 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
   const volumenChartData = chartData.map(d => {
     const total = d.ingresados || 0;
     if (total === 0) return { fecha: d.fecha, retiMeli: 0, andreani: 0, flotaPropia: 0, otros: 0 };
+
+    // If we have detailed breakdown from snapshot, use it!
+    if (d.ingRetiMeli !== undefined || d.ingAndreani !== undefined || d.ingFlotaPropia !== undefined || d.ingOtros !== undefined) {
+      return {
+        fecha: d.fecha,
+        retiMeli: d.ingRetiMeli || 0,
+        andreani: d.ingAndreani || 0,
+        flotaPropia: d.ingFlotaPropia || 0,
+        otros: d.ingOtros || 0,
+      };
+    }
 
     // For today (live): use real category splits from the global totals
     if (d.fecha === lastDayWithIngresados && totalGlobal > 0) {
