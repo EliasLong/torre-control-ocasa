@@ -5,9 +5,11 @@ interface EventoHeaderProps {
   avance: number;
   estado: string;
   targetBultos?: number;
+  bultosIngresados?: number | null;
+  loadingPedidos?: boolean;
 }
 
-export function EventoHeader({ diaEvento, avance, estado, targetBultos = 11213 }: EventoHeaderProps) {
+export function EventoHeader({ diaEvento, avance, estado, targetBultos = 15688, bultosIngresados, loadingPedidos }: EventoHeaderProps) {
   const textColorEstado = estado === 'Al Día' ? '#8fbf4c' : (estado === 'Atrasado' ? '#E53935' : '#1A1A1A');
 
   return (
@@ -16,7 +18,7 @@ export function EventoHeader({ diaEvento, avance, estado, targetBultos = 11213 }
         <div className="flex flex-col">
           <h1 className="text-2xl font-bold tracking-tight uppercase text-[#1A1A1A]">HOT SALE - CYBER</h1>
           <p className="text-[#9CA3AF] text-sm">
-            11-18 mayo · 8 días · Forecast: {targetBultos.toLocaleString('es-AR')} pedidos · Vista ejecutiva A4 horizontal
+            11-18 mayo · 8 días · Forecast: {targetBultos.toLocaleString('es-AR')} bultos 
           </p>
         </div>
       </div>
@@ -24,6 +26,12 @@ export function EventoHeader({ diaEvento, avance, estado, targetBultos = 11213 }
         <div className="bg-[#F5F5F5] px-4 py-2 rounded-lg border border-[#E0E0E0] min-w-[120px]">
           <div className="text-[#9CA3AF] text-xs mb-1">Día evento</div>
           <div className="text-xl font-bold text-[#1A1A1A]">{diaEvento}/8</div>
+        </div>
+        <div className="bg-[#EFF6FF] px-4 py-2 rounded-lg border border-[#BFDBFE] min-w-[140px]">
+          <div className="text-[#3B82F6] text-xs mb-1 font-semibold">Bultos ingresados</div>
+          <div className="text-xl font-bold text-[#1D4ED8]">
+            {loadingPedidos ? '…' : bultosIngresados != null ? bultosIngresados.toLocaleString('es-AR') : '—'}
+          </div>
         </div>
         <div className="bg-[#F5F5F5] px-4 py-2 rounded-lg border border-[#E0E0E0] min-w-[120px]">
           <div className="text-[#9CA3AF] text-xs mb-1">Avance</div>

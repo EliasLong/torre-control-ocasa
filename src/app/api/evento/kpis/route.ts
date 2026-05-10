@@ -6,6 +6,7 @@ const SPREADSHEET_B2C = '12THXnAPh19StLyMc-wOp_iqz9cvD__ktVxwuKNcoTMM';
 const SPREADSHEET_B2B = '1qSptp0U_8fuo_bAcsQtsLl5ROVzCN44kZHKuEHC24vI';
 const SPREADSHEET_DEVOLUCIONES = '1NyuFejOKhFnu_VNvUBqoWTP6hpMUSPPd';
 const SPREADSHEET_INGRESADOS = '1NmNAOaUSnUknHLCiqPOIqaX8qdqUUzEZh0qSyZKRKJY';
+const SPREADSHEET_INCIDENCIAS = '1IABChnxxxRB9JnUe83OdNxRq6doDpDntg9j_rXxYK7s';
 
 const SHEETS = {
   PL2_B2C: { id: SPREADSHEET_B2C, gid: '0', type: 'B2C' },
@@ -16,7 +17,39 @@ const SHEETS = {
   PL3_DEVOLUCIONES: { id: SPREADSHEET_DEVOLUCIONES, gid: '573838045', type: 'DEV' },
   PL2_INGRESADOS: { id: SPREADSHEET_INGRESADOS, gid: '0', type: 'ING' },
   PL3_INGRESADOS: { id: SPREADSHEET_INGRESADOS, gid: '1150456694', type: 'ING' },
+  INCIDENCIAS: { id: SPREADSHEET_INCIDENCIAS, gid: '468898453', type: 'INC' }
 } as const;
+
+// ── Trip sheet configs ─────────────────────────────────────────────────────
+// Each sheet has: spreadsheet ID, gid, date column index, and whether it has
+// a double header row (row 0 = group label, row 1 = real column names).
+const TRIP_SHEETS = [
+  {
+    // PL2 B2B: SPREADSHEET_B2C gid=2008554442 — col [13] = "FECHA DE DESPACHO"
+    // Has double header: row 0 is meta-header, row 1 is the real header
+    id: SPREADSHEET_B2C, gid: '2008554442', dateCol: 13, doubleHeader: true,
+    label: 'PL2_B2B_DESPACHO',
+  },
+  {
+    // PL3 B2B: SPREADSHEET_B2C gid=0 — col [12] = "Fecha de Salida"
+    // Has double header: row 0 is meta-header, row 1 is the real header
+    id: SPREADSHEET_B2C, gid: '0', dateCol: 12, doubleHeader: true,
+    label: 'PL3_B2B_SALIDA',
+  },
+  {
+    // PL3 B2B: SPREADSHEET_B2B gid=2114457503 — col [16] = "Hora Inicio"
+    // Single header row. Values are either dates (DD/M/YYYY) or times (hh:mm:ss)
+    // Only count rows where the cell contains a date (not a time)
+    id: SPREADSHEET_B2B, gid: '2114457503', dateCol: 16, doubleHeader: false,
+    label: 'PL3_B2B_HORAINICIO',
+  },
+  {
+    // PL2 B2B: SPREADSHEET_B2B gid=1832488493 — col [16] = "Fecha de Salida"
+    // Single header row. Values may include timestamp suffix (DD/M/YYYY HH:mm:ss)
+    id: SPREADSHEET_B2B, gid: '1832488493', dateCol: 16, doubleHeader: false,
+    label: 'PL2_B2B_SALIDA',
+  },
+] as const;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -53,17 +86,32 @@ const MONTHS: Record<string, string> = {
 
 function parseIngresadosDate(raw: string): Date | null {
   if (!raw || raw.trim() === '') return null;
-  const parts = raw.trim().split('-');
-  if (parts.length === 3) {
-    const day = parseInt(parts[0], 10);
-    const monthStr = parts[1].toUpperCase();
-    const month = parseInt(MONTHS[monthStr] || '1', 10) - 1;
-    let year = parseInt(parts[2], 10);
-    if (year < 100) year += 2000;
-    const d = new Date(year, month, day);
-    if (!isNaN(d.getTime())) return d;
+  const s = raw.trim();
+
+  // Try DD-MMM-YY or DD-MMM-YYYY
+  if (s.includes('-')) {
+    const parts = s.split('-');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const monthStr = parts[1].toUpperCase();
+      const month = parseInt(MONTHS[monthStr] || '1', 10) - 1;
+      let year = parseInt(parts[2], 10);
+      if (year < 100) year += 2000;
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime())) return d;
+    }
   }
-  return null;
+
+  // Fallback to standard sheet date parser (handles DD/MM/YYYY)
+  return parseSheetDate(s);
+}
+
+function parseDispatchDate(rawDispatch: string, rowDate: Date | null): Date | null {
+  if (!rawDispatch || rawDispatch.trim() === '') return null;
+  const datePart = rawDispatch.split(' ')[0];
+  const explicitDate = parseSheetDate(datePart);
+  if (explicitDate) return explicitDate;
+  return rowDate;
 }
 
 function parseSheetDate(raw: string): Date | null {
@@ -99,9 +147,10 @@ function formatDateKey(d: Date): string {
 
 interface SheetRow {
   date: Date | null;
+  dispatchDate: Date | null;
   bultos: number;
   pallets: number;
-  isDispatched: boolean;
+  transportType?: string;
 }
 
 function parseB2CRow(cols: string[], gid: string): SheetRow | null {
@@ -111,24 +160,85 @@ function parseB2CRow(cols: string[], gid: string): SheetRow | null {
   const cantTareasCol = parseFloat(cols[7]) || 0;
   const bultos = bultosCol + cantTareasCol;
   const pallets = parseFloat(cols[5]) || 0;
-  const isDispatched = cols.some(c => c.toLowerCase().includes('liberado'));
-  return { date, bultos, pallets, isDispatched };
+
+  let rawDispatch = '';
+  if (gid === '0') rawDispatch = cols[12] || '';
+  else rawDispatch = cols[13] || '';
+  const dispatchDate = parseDispatchDate(rawDispatch, date);
+
+  return { date, dispatchDate, bultos, pallets };
 }
 
-function parseB2BRow(cols: string[]): SheetRow | null {
+function parseB2BRow(cols: string[], gid: string): SheetRow | null {
   const rawDate = cols[0];
   const date = parseSheetDate(rawDate);
   const bultos = parseFloat(cols[8]) || 0;
   const pallets = parseFloat(cols[9]) || parseFloat(cols[10]) || 0;
-  const isDispatched = cols.some(c => c.toLowerCase().includes('liberado'));
-  return { date, bultos, pallets, isDispatched };
+
+  const rawDispatch = cols[16] || '';
+  const dispatchDate = parseDispatchDate(rawDispatch, date);
+
+  return { date, dispatchDate, bultos, pallets };
 }
 
 function parseIngresadosRow(cols: string[]): SheetRow | null {
   if (cols.length < 29) return null;
-  const date = parseIngresadosDate(cols[8]);
+  // Use "Programada" column (index 9) for date
+  const date = parseIngresadosDate(cols[9]);
   const bultos = parseFloat(cols[28]) || 0;
-  return { date, bultos, pallets: 0, isDispatched: false };
+  const transportType = (cols[23] || '').trim().toUpperCase();
+  return { date, dispatchDate: null, bultos, pallets: 0, transportType };
+}
+
+function parseIncidenciasRow(cols: string[]): SheetRow | null {
+  if (cols.length < 8) return null;
+  const rawDate = cols[0] || '';
+  const datePart = rawDate.split(' ')[0];
+  const date = parseSheetDate(datePart);
+  const cantidad = parseFloat(cols[7]) || 0;
+  return { date, dispatchDate: null, bultos: cantidad, pallets: 0 };
+}
+
+// ── Trip fetcher ──────────────────────────────────────────────────────────
+// Returns a map of dateKey (DD/MM) → count of trips dispatched that day.
+async function fetchTripCounts(
+  sheet: typeof TRIP_SHEETS[number],
+  eventDays: string[]
+): Promise<Record<string, number>> {
+  const url = csvUrl(sheet.id, sheet.gid);
+  let text: string;
+  try {
+    const res = await fetch(url, { next: { revalidate: 0 } });
+    if (!res.ok) return {};
+    text = await res.text();
+  } catch {
+    return {};
+  }
+
+  const rows = parseCsv(text);
+  const counts: Record<string, number> = {};
+
+  // Skip 1 or 2 header rows depending on the sheet
+  const dataStart = sheet.doubleHeader ? 2 : 1;
+
+  for (let i = dataStart; i < rows.length; i++) {
+    const cols = rows[i];
+    if (!cols || cols.length <= sheet.dateCol) continue;
+    const raw = (cols[sheet.dateCol] || '').trim();
+    if (!raw) continue;
+
+    // Parse the date portion (ignore any time suffix)
+    const datePart = raw.split(' ')[0]; // handles "27/4/2026 9:05:19" → "27/4/2026"
+    const d = parseSheetDate(datePart);
+    if (!d) continue;
+
+    const key = formatDateKey(d);
+    if (!eventDays.includes(key)) continue;
+
+    counts[key] = (counts[key] || 0) + 1;
+  }
+
+  return counts;
 }
 
 // ── Main fetcher ───────────────────────────────────────────────────────────
@@ -136,7 +246,7 @@ function parseIngresadosRow(cols: string[]): SheetRow | null {
 async function fetchSheetRows(
   spreadsheetId: string,
   gid: string,
-  type: 'B2C' | 'B2B' | 'DEV' | 'ING'
+  type: 'B2C' | 'B2B' | 'DEV' | 'ING' | 'INC'
 ): Promise<SheetRow[]> {
   const url = csvUrl(spreadsheetId, gid);
   let text: string;
@@ -153,20 +263,33 @@ async function fetchSheetRows(
 
   for (let i = 0; i < rows.length; i++) {
     const cols = rows[i];
+
+    if (type === 'ING') {
+      // For ING sheets: skip header row (col[0] = 'Unidad Operativa') and empty rows
+      const col0 = (cols[0] || '').trim();
+      const col9 = (cols[9] || '').trim();
+      if (col0.toLowerCase() === 'unidad operativa') continue; // header
+      if (col9 === '' || col9.toLowerCase() === 'programada') continue; // no date
+      const row = parseIngresadosRow(cols);
+      if (row) results.push(row);
+      continue;
+    }
+
     if (!cols || cols.length < 5) continue;
     const col0 = (cols[0] || '').trim();
     if (col0 === '' || col0.toLowerCase().includes('fecha') || col0.includes('Source:')) continue;
 
     let row: SheetRow | null = null;
     if (type === 'B2C') row = parseB2CRow(cols, gid);
-    else if (type === 'B2B') row = parseB2BRow(cols);
+    else if (type === 'B2B') row = parseB2BRow(cols, gid);
     else if (type === 'DEV') {
       const date = parseSheetDate(cols[0]);
       const quantity = Math.round(parseFloat(cols[5])) || 0;
-      row = { date, bultos: quantity, pallets: 0, isDispatched: false };
-    } else if (type === 'ING') {
-      row = parseIngresadosRow(cols);
+      row = { date, dispatchDate: null, bultos: quantity, pallets: 0 };
+    } else if (type === 'INC') {
+      row = parseIncidenciasRow(cols);
     }
+
     if (row) results.push(row);
   }
   return results;
@@ -180,12 +303,15 @@ export interface DayKPIs {
   bultosB2B: number;
   palletsB2C: number;
   palletsB2B: number;
-  tripsB2C: number;
-  tripsB2B: number;
+  tripsB2C: number;   // legacy — kept for snapshot compat, not used in chart
+  tripsB2B: number;   // legacy — kept for snapshot compat, not used in chart
+  viajesTotal: number; // NEW: real dispatched trips from the 4 trip sheets
   despachadosBultos: number;
   camionesDespB2B: number;
   devoluciones: number;
   ingresados: number;
+  ingresadosFlota: number;
+  incidencias: number;
 }
 
 export interface EventoKPIsResponse {
@@ -197,11 +323,20 @@ export interface EventoKPIsResponse {
     palletsB2B: number;
     tripsB2C: number;
     tripsB2B: number;
+    viajesTotal: number;
     despachadosBultos: number;
     camionesDespB2B: number;
     devoluciones: number;
     ingresados: number;
+    ingresadosFlota: number;
+    incidencias: number;
   };
+  // Volumen por Transporte: totals from ALL rows in ING sheets, no date filter
+  // 4 categories: Retira Meli | Andreani | Flota Propia | Otros
+  volumenRetiMeli: number;
+  volumenAndreani: number;
+  volumenFlotaPropia: number;
+  volumenOtros: number;
   availableDays: string[];
 }
 
@@ -210,17 +345,19 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
     const EVENT_DAYS: string[] = [];
     const EVENT_DAYS_YYYY_MM_DD: string[] = [];
     const today = new Date();
-    for (let i = 7; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      EVENT_DAYS.push(formatDateKey(d));
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
+
+    // ── Evento Hot Sale / Cyber: fechas fijas 04/05 → 11/05/2026 ─────────────
+    const EVENT_START = new Date(2026, 4, 4);  // 04 May 2026 (month = 0-indexed)
+    const EVENT_END   = new Date(2026, 4, 11); // 11 May 2026
+    for (let cur = new Date(EVENT_START); cur <= EVENT_END; cur.setDate(cur.getDate() + 1)) {
+      EVENT_DAYS.push(formatDateKey(cur));
+      const yyyy = cur.getFullYear();
+      const mm = String(cur.getMonth() + 1).padStart(2, '0');
+      const dd = String(cur.getDate()).padStart(2, '0');
       EVENT_DAYS_YYYY_MM_DD.push(`${yyyy}-${mm}-${dd}`);
     }
 
-    const [pl2b2c, pl3b2c, pl2b2b, pl3b2b, pl2dev, pl3dev, pl2ing, pl3ing, pickingMovs] = await Promise.all([
+    const [pl2b2c, pl3b2c, pl2b2b, pl3b2b, pl2dev, pl3dev, pl2ing, pl3ing, incidencias, pickingMovs, ...tripCountsArr] = await Promise.all([
       fetchSheetRows(SHEETS.PL2_B2C.id, SHEETS.PL2_B2C.gid, 'B2C'),
       fetchSheetRows(SHEETS.PL3_B2C.id, SHEETS.PL3_B2C.gid, 'B2C'),
       fetchSheetRows(SHEETS.PL2_B2B.id, SHEETS.PL2_B2B.gid, 'B2B'),
@@ -229,8 +366,19 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
       fetchSheetRows(SHEETS.PL3_DEVOLUCIONES.id, SHEETS.PL3_DEVOLUCIONES.gid, 'DEV'),
       fetchSheetRows(SHEETS.PL2_INGRESADOS.id, SHEETS.PL2_INGRESADOS.gid, 'ING'),
       fetchSheetRows(SHEETS.PL3_INGRESADOS.id, SHEETS.PL3_INGRESADOS.gid, 'ING'),
+      fetchSheetRows(SHEETS.INCIDENCIAS.id, SHEETS.INCIDENCIAS.gid, 'INC'),
       getMovimientosPorFechas(EVENT_DAYS_YYYY_MM_DD),
+      // Fetch trip counts from all 4 trip sheets in parallel
+      ...TRIP_SHEETS.map(s => fetchTripCounts(s, EVENT_DAYS)),
     ]);
+
+    // Merge trip counts from all 4 sheets into a single map
+    const mergedTripCounts: Record<string, number> = {};
+    for (const counts of tripCountsArr as Record<string, number>[]) {
+      for (const [day, n] of Object.entries(counts)) {
+        mergedTripCounts[day] = (mergedTripCounts[day] || 0) + n;
+      }
+    }
 
     const allB2C = [...pl2b2c, ...pl3b2c];
     const allB2B = [...pl2b2b, ...pl3b2b];
@@ -247,21 +395,29 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
         palletsB2B: 0,
         tripsB2C: 0,
         tripsB2B: 0,
+        viajesTotal: 0,
         despachadosBultos: 0,
         camionesDespB2B: 0,
         devoluciones: 0,
-        ingresados: 0
+        ingresados: 0,
+        ingresadosFlota: 0,
+        incidencias: 0
       };
     });
 
     function addToDay(key: string, b2c: boolean, row: SheetRow) {
-      if (!EVENT_DAYS.includes(key)) return;
-      if (row.isDispatched) {
-        byDay[key].despachadosBultos += row.bultos;
-        if (!b2c) {
-          byDay[key].camionesDespB2B += 1;
+      if (row.dispatchDate) {
+        const dispatchKey = formatDateKey(row.dispatchDate);
+        if (EVENT_DAYS.includes(dispatchKey)) {
+          byDay[dispatchKey].despachadosBultos += row.bultos;
+          if (!b2c) {
+            byDay[dispatchKey].camionesDespB2B += 1;
+          }
         }
       }
+
+      if (!EVENT_DAYS.includes(key)) return;
+
       if (b2c) {
         byDay[key].palletsB2C += row.pallets;
         byDay[key].tripsB2C += 1;
@@ -277,19 +433,63 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
     for (const row of allB2B) {
       if (row.date) addToDay(formatDateKey(row.date), false, row);
     }
+    // Step removed: ING rows are no longer filtered by their internal date column.
+    // Instead, they are summed globally below and attributed to "today".
+
+
+    // Volumen por Transporte: sum ALL ING rows regardless of date.
+    // 4 categories determined by the "Transporte" column (col[23]):
+    //   Retira Meli  → transport contains "MELI"
+    //   Andreani     → transport contains "ANDREANI" (covers all variants)
+    //   Flota Propia → transport contains "FLOTA PROPIA"
+    //   Otros        → everything else
+    let volumenRetiMeli = 0;
+    let volumenAndreani = 0;
+    let volumenFlotaPropia = 0;
+    let volumenOtros = 0;
     for (const row of allIng) {
-      if (row.date) {
-        const key = formatDateKey(row.date);
-        if (EVENT_DAYS.includes(key)) {
-          byDay[key].ingresados += row.bultos;
-        }
+      const t = (row.transportType || '').toUpperCase();
+      if (t.includes('MELI')) {
+        volumenRetiMeli += row.bultos;
+      } else if (t.includes('ANDREANI')) {
+        volumenAndreani += row.bultos;
+      } else if (t.includes('FLOTA PROPIA')) {
+        volumenFlotaPropia += row.bultos;
+      } else {
+        volumenOtros += row.bultos;
       }
     }
+
+    // For the Volumen por Transporte chart: today's bar = live global total of the sheet
+    // (no date filter — represents the state of the sheet at this moment)
+    // Historical days use the 6am snapshot saved by the cron.
+    const todayKey = formatDateKey(today);
+    if (byDay[todayKey]) {
+      byDay[todayKey].ingresados = volumenRetiMeli + volumenAndreani + volumenFlotaPropia + volumenOtros;
+      byDay[todayKey].ingresadosFlota = volumenFlotaPropia;
+    }
+
+    // Apply trip counts to byDay
+    for (const [day, n] of Object.entries(mergedTripCounts)) {
+      if (byDay[day]) {
+        byDay[day].viajesTotal = n;
+      }
+    }
+
     for (const row of [...pl2dev, ...pl3dev]) {
       if (row.date) {
         const key = formatDateKey(row.date);
         if (EVENT_DAYS.includes(key)) {
           byDay[key].devoluciones += row.bultos;
+        }
+      }
+    }
+
+    for (const row of incidencias) {
+      if (row.date) {
+        const key = formatDateKey(row.date);
+        if (EVENT_DAYS.includes(key)) {
+          byDay[key].incidencias += row.bultos;
         }
       }
     }
@@ -309,6 +509,32 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
       }
     }
 
+    // ── Capture live values AFTER all computation loops ──────────────────────
+    // This snapshot is used as fallback when a DB snapshot has 0 for a field.
+    // ingresados fallback = global ING total (volumen acumulado), NOT per-day sum,
+    // because the Volumen chart needs to show how the operation started that day.
+    const liveValues: Record<string, {
+      ingresados: number; ingresadosFlota: number;
+      bultosB2C: number; bultosB2B: number;
+      despachadosBultos: number; camionesDespB2B: number;
+      devoluciones: number; incidencias: number;
+    }> = {};
+    for (const key of EVENT_DAYS) {
+      const isToday = key === todayKey;
+      liveValues[key] = {
+        // For ingresados: only use the global total for the current day.
+        // For historical days, we MUST rely on snapshots.
+        ingresados: isToday ? (volumenRetiMeli + volumenAndreani + volumenFlotaPropia + volumenOtros) : 0,
+        ingresadosFlota: isToday ? volumenFlotaPropia : 0,
+        bultosB2C: byDay[key]?.bultosB2C || 0,
+        bultosB2B: byDay[key]?.bultosB2B || 0,
+        despachadosBultos: byDay[key]?.despachadosBultos || 0,
+        camionesDespB2B: byDay[key]?.camionesDespB2B || 0,
+        devoluciones: byDay[key]?.devoluciones || 0,
+        incidencias: byDay[key]?.incidencias || 0,
+      };
+    }
+
     const snapshots = await query(`
       SELECT * FROM evento_kpi_snapshots
       WHERE date >= $1 AND date <= $2
@@ -325,19 +551,47 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
         const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
         const key = `${dd}/${mm}`;
         if (byDay[key]) {
-          byDay[key].bultosB2C = snap.bultos_b2c;
-          byDay[key].bultosB2B = snap.bultos_b2b;
+          const live = liveValues[key] || {};
+
+          // For every field: prefer snapshot if > 0, otherwise fallback to live value.
+          // This prevents a snapshot saved with 0 (e.g. cron ran before data loaded)
+          // from wiping out values that are calculable from the live sheets.
+          byDay[key].bultosB2C = (snap.bultos_b2c || 0) > 0 ? snap.bultos_b2c : (live.bultosB2C || 0);
+          byDay[key].bultosB2B = (snap.bultos_b2b || 0) > 0 ? snap.bultos_b2b : (live.bultosB2B || 0);
           byDay[key].palletsB2C = snap.pallets_b2c;
           byDay[key].palletsB2B = snap.pallets_b2b;
           byDay[key].tripsB2C = snap.trips_b2c;
           byDay[key].tripsB2B = snap.trips_b2b;
-          byDay[key].despachadosBultos = snap.despachados_bultos;
-          byDay[key].camionesDespB2B = snap.camiones_desp_b2b;
-          byDay[key].devoluciones = snap.devoluciones;
-          byDay[key].ingresados = snap.ingresados;
+          byDay[key].despachadosBultos = (snap.despachados_bultos || 0) > 0 ? snap.despachados_bultos : (live.despachadosBultos || 0);
+          byDay[key].camionesDespB2B = (snap.camiones_desp_b2b || 0) > 0 ? snap.camiones_desp_b2b : (live.camionesDespB2B || 0);
+          byDay[key].devoluciones = (snap.devoluciones || 0) > 0 ? snap.devoluciones : (live.devoluciones || 0);
+          byDay[key].incidencias = (snap.incidencias || 0) > 0 ? snap.incidencias : (live.incidencias || 0);
+          // ingresados: prefer snapshot if > 0, otherwise fallback to live sheet data
+          const snapIng = snap.ingresados || 0;
+          const snapIngFlota = snap.ingresados_flota || 0;
+          byDay[key].ingresados = snapIng > 0 ? snapIng : (live.ingresados || 0);
+          byDay[key].ingresadosFlota = snapIngFlota > 0 ? snapIngFlota : (live.ingresadosFlota || 0);
         }
       }
     }
+
+    // ── TESTING: Inject random data for D1, D2, D3, D4 ──────────────────────
+    const D_KEYS = EVENT_DAYS.slice(0, 4);
+    D_KEYS.forEach((key) => {
+      if (byDay[key]) {
+        byDay[key].bultosB2C = Math.floor(Math.random() * 1500) + 1500;
+        byDay[key].bultosB2B = Math.floor(Math.random() * 1000) + 500;
+        byDay[key].despachadosBultos = byDay[key].bultosB2C + byDay[key].bultosB2B + Math.floor(Math.random() * 500);
+        byDay[key].camionesDespB2B = Math.floor(Math.random() * 15) + 10;
+        byDay[key].devoluciones = Math.floor(Math.random() * 15) + 5;
+        byDay[key].incidencias = Math.floor(Math.random() * 10) + 1;
+        byDay[key].ingresados = Math.floor(Math.random() * 3000) + 2000;
+        byDay[key].ingresadosFlota = Math.floor(byDay[key].ingresados * 0.4);
+        byDay[key].viajesTotal = Math.floor(Math.random() * 25) + 15;
+        byDay[key].palletsB2C = Math.floor(Math.random() * 30) + 20;
+        byDay[key].palletsB2B = Math.floor(Math.random() * 25) + 15;
+      }
+    });
 
     const availableDays = Object.keys(byDay)
       .filter((day) => EVENT_DAYS.includes(day))
@@ -357,16 +611,33 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
         acc.palletsB2B += d.palletsB2B;
         acc.tripsB2C += d.tripsB2C;
         acc.tripsB2B += d.tripsB2B;
+        acc.viajesTotal += d.viajesTotal;
         acc.despachadosBultos += d.despachadosBultos;
         acc.camionesDespB2B += d.camionesDespB2B;
         acc.devoluciones += d.devoluciones;
         acc.ingresados += d.ingresados;
+        acc.ingresadosFlota += d.ingresadosFlota;
+        acc.incidencias += d.incidencias;
         return acc;
       },
-      { bultosB2C: 0, bultosB2B: 0, palletsB2C: 0, palletsB2B: 0, tripsB2C: 0, tripsB2B: 0, despachadosBultos: 0, camionesDespB2B: 0, devoluciones: 0, ingresados: 0 }
+      {
+        bultosB2C: 0,
+        bultosB2B: 0,
+        palletsB2C: 0,
+        palletsB2B: 0,
+        tripsB2C: 0,
+        tripsB2B: 0,
+        viajesTotal: 0,
+        despachadosBultos: 0,
+        camionesDespB2B: 0,
+        devoluciones: 0,
+        ingresados: 0,
+        ingresadosFlota: 0,
+        incidencias: 0
+      }
     );
 
-    const response: EventoKPIsResponse = { byDay, totals, availableDays };
+    const response: EventoKPIsResponse = { byDay, totals, availableDays, volumenRetiMeli, volumenAndreani, volumenFlotaPropia, volumenOtros };
     return response;
   } catch (err: any) {
     console.error('[evento/kpis]', err);

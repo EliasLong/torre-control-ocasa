@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-type AccentColor = 'green' | 'purple' | 'amber' | 'red' | 'cyan';
+type AccentColor = 'green' | 'purple' | 'amber' | 'red' | 'cyan' | 'blue';
 
 interface EventoCardProps {
   label: string;
@@ -18,6 +18,7 @@ const ACCENT_COLORS: Record<AccentColor, string> = {
   amber: '#ffab40',
   red: '#E53935',
   cyan: '#0099A8',
+  blue: '#2563EB',
 };
 
 export function EventoCard({ label, value, subtitle, accent = 'green', highlight = false }: EventoCardProps) {
@@ -25,13 +26,11 @@ export function EventoCard({ label, value, subtitle, accent = 'green', highlight
 
   return (
     <div
-      className="bg-white flex flex-col justify-between p-3 min-w-0 overflow-hidden"
+      className="bg-white flex flex-col justify-between p-3 min-w-0 overflow-hidden border border-[#E0E0E0] rounded"
       style={{
-        borderLeft: `4px solid ${color}`,
-        borderRadius: '4px',
-        border: '1px solid #E0E0E0',
         borderLeftColor: color,
         borderLeftWidth: '4px',
+        borderLeftStyle: 'solid',
       }}
     >
       <div

@@ -16,6 +16,8 @@ export async function GET() {
           camiones_desp_b2b   INTEGER     NOT NULL DEFAULT 0,
           devoluciones        INTEGER     NOT NULL DEFAULT 0,
           ingresados          INTEGER     NOT NULL DEFAULT 0,
+          ingresados_flota    INTEGER     NOT NULL DEFAULT 0,
+          incidencias         INTEGER     NOT NULL DEFAULT 0,
           created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );

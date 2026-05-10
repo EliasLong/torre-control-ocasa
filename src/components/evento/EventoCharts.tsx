@@ -3,7 +3,7 @@
 import React from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, LineChart, Line, ComposedChart, ReferenceLine,
+  ResponsiveContainer, LineChart, Line, ComposedChart, ReferenceLine, Cell,
 } from 'recharts';
 
 // ── Props ──────────────────────────────────────────────────────────────────
@@ -16,11 +16,17 @@ interface ChartDayRow {
   totalBultos: number;
   despachadoReal: number;
   forecast: number;
+  ingresados: number;
+  ingresadosFlota: number;
 }
 
 interface EventoChartsProps {
   chartData: ChartDayRow[];
   targetBultos: number;
+  volumenRetiMeli: number;
+  volumenAndreani: number;
+  volumenFlotaPropia: number;
+  volumenOtros: number;
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────
@@ -73,7 +79,7 @@ function LegendLine({ color, label, dashed }: { color: string; label: string; da
   );
 }
 
-export function EventoCharts({ chartData, targetBultos }: EventoChartsProps) {
+export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumenAndreani, volumenFlotaPropia, volumenOtros }: EventoChartsProps) {
   if (!chartData || chartData.length === 0) return null;
 
   // Derived data for specific charts
@@ -95,63 +101,124 @@ export function EventoCharts({ chartData, targetBultos }: EventoChartsProps) {
   }
   const avgPace = daysElapsed > 0 ? totalPickedSoFar / daysElapsed : 0;
 
+  const BACKLOG_TARGET = 15688;
   const metaDiaria = Math.round(targetBultos / chartData.length);
-  const flowChartData = chartData.map((d, i) => {
+
+  // Total volumen = all 4 categories (global, no date filter)
+  const totalVolumenIngresado = volumenRetiMeli + volumenAndreani + volumenFlotaPropia + volumenOtros;
+
+  // Volumen por Transporte: each bar shows the 4 transport breakdown.
+  // For historical days the snapshot 6am value is used; for today, live global total.
+  // We distribute the total (d.ingresados) across the 4 categories proportionally
+  // using the global ratios — the snapshot only stores the total and flota.
+  // For today (last bar with live data) we use the real category splits.
+  const lastDayWithIngresados = chartData.slice().reverse().find(d => (d.ingresados || 0) > 0)?.fecha;
+  const totalGlobal = volumenRetiMeli + volumenAndreani + volumenFlotaPropia + volumenOtros;
+
+  const volumenChartData = chartData.map(d => {
+    const total = d.ingresados || 0;
+    if (total === 0) return { fecha: d.fecha, retiMeli: 0, andreani: 0, flotaPropia: 0, otros: 0 };
+
+    // For today (live): use real category splits from the global totals
+    if (d.fecha === lastDayWithIngresados && totalGlobal > 0) {
+      return {
+        fecha: d.fecha,
+        retiMeli: volumenRetiMeli,
+        andreani: volumenAndreani,
+        flotaPropia: volumenFlotaPropia,
+        otros: volumenOtros,
+      };
+    }
+
+    // For historical snapshots: distribute proportionally using current global ratios
+    if (totalGlobal > 0) {
+      return {
+        fecha: d.fecha,
+        retiMeli: Math.round(total * volumenRetiMeli / totalGlobal),
+        andreani: Math.round(total * volumenAndreani / totalGlobal),
+        flotaPropia: Math.round(total * volumenFlotaPropia / totalGlobal),
+        otros: Math.round(total * volumenOtros / totalGlobal),
+      };
+    }
+
+    return { fecha: d.fecha, retiMeli: 0, andreani: 0, flotaPropia: total, otros: 0 };
+  });
+
+  // Calculate cumulative progress for the right Y-axis
+  let accReal = 0;
+  let accForecast = 0;
+  const enrichedData = chartData.map(d => {
+    accReal += d.totalBultos;
+    accForecast += d.forecast;
     return {
-      fecha: d.fecha,
-      volumen: d.ingresados || 0,
-      despachadoReal: d.despachadoReal || 0,
-      backlog: metaDiaria, // Meta dividida por día
+      ...d,
+      accReal,
+      accForecast
     };
   });
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Full-width: Total bultos por día */}
+      {/* Full-width: Picking B2C vs B2B (bultos/día) */}
       <ChartCard
-        title="Pedidos despachados vs. forecast diario"
+        title="Forecast vs Picking"
         legend={
-          <div className="flex gap-4">
-            <LegendDot color="#C6D6F2" label="Forecast" />
-            <LegendDot color="#729C34" label="Despachado real" />
+          <div className="flex gap-4 flex-wrap">
+            <LegendDot color="#1E3A8A" label="B2C" />
+            <LegendDot color="#7C3AED" label="B2B" />
+            <LegendDot color="#CBD5E1" label="Forecast (Día)" />
+            <LegendLine color="#10B981" label="Progreso Real (Acum.)" />
+            <LegendLine color="#94A3B8" label="Progreso Forecast (Acum.)" dashed />
+            <LegendLine color="#64748B" label="Meta Final" dashed />
           </div>
         }
       >
-        <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barGap={6}>
+        <ResponsiveContainer width="100%" height={500}>
+          <ComposedChart data={enrichedData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }} barGap={2}>
             <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
             <XAxis dataKey="fecha" {...axisProps} />
             <YAxis {...axisProps} />
             <Tooltip {...tooltipStyle} />
-            <Bar dataKey="forecast" name="Forecast" fill="#C6D6F2" radius={[2, 2, 0, 0]} barSize={28} />
-            <Bar dataKey="despachadoReal" name="Despachado real" fill="#729C34" radius={[2, 2, 0, 0]} barSize={28} />
-          </BarChart>
+            
+            {/* Daily Bars */}
+            <Bar dataKey="bultosB2C" name="B2C" fill="#1E3A8A" radius={[2, 2, 0, 0]} barSize={14} />
+            <Bar dataKey="bultosB2B" name="B2B" fill="#7C3AED" radius={[2, 2, 0, 0]} barSize={14} />
+            <Bar dataKey="forecast" name="Forecast (Día)" fill="#CBD5E1" radius={[2, 2, 0, 0]} barSize={14} />
+            
+            {/* Final Meta Line */}
+            <ReferenceLine 
+              y={targetBultos} 
+              stroke="#64748B" 
+              strokeWidth={2} 
+              strokeDasharray="5 5" 
+              label={{ position: 'top', value: `Meta Final: ${targetBultos}`, fill: '#64748B', fontSize: 10 }}
+            />
+            
+            {/* Cumulative Lines */}
+            <Line
+              type="monotone"
+              dataKey="accForecast"
+              name="Progreso Forecast (Acum.)"
+              stroke="#94A3B8"
+              strokeWidth={2}
+              strokeDasharray="5 5"
+              dot={false}
+            />
+            <Line
+              type="monotone"
+              dataKey="accReal"
+              name="Progreso Real (Acum.)"
+              stroke="#10B981"
+              strokeWidth={3}
+              dot={{ r: 4, fill: '#10B981', strokeWidth: 0 }}
+              activeDot={{ r: 6 }}
+            />
+          </ComposedChart>
         </ResponsiveContainer>
       </ChartCard>
 
-      {/* Two-column: Picking B2C vs B2B + Camiones/viajes */}
+      {/* Two-column: Viajes + Volumen por Transporte */}
       <div className="grid grid-cols-2 gap-4">
-        <ChartCard
-          title="Picking B2C vs B2B (bultos/día)"
-          legend={
-            <div className="flex gap-4">
-              <LegendDot color="#1E3A8A" label="B2C" />
-              <LegendDot color="#7C3AED" label="B2B" />
-            </div>
-          }
-        >
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barGap={2}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-              <XAxis dataKey="fecha" {...axisProps} />
-              <YAxis {...axisProps} />
-              <Tooltip {...tooltipStyle} />
-              <Bar dataKey="bultosB2C" name="B2C" fill="#1E3A8A" radius={[2, 2, 0, 0]} barSize={14} />
-              <Bar dataKey="bultosB2B" name="B2B" fill="#7C3AED" radius={[2, 2, 0, 0]} barSize={14} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
         <ChartCard
           title="Viajes (camiones) despachados por día"
           legend={
@@ -172,55 +239,40 @@ export function EventoCharts({ chartData, targetBultos }: EventoChartsProps) {
             </ComposedChart>
           </ResponsiveContainer>
         </ChartCard>
-      </div>
 
-      {/* Two-column: Acumulado + Pallets */}
-      <div className="grid grid-cols-2 gap-4">
         <ChartCard
-          title="Backlog (Volumen vs Despachados vs Meta)"
+          title="Volumen por Transporte (Ingresados)"
           legend={
-            <div className="flex gap-4">
-              <LegendDot color="#F59E0B" label="Volumen" />
-              <LegendDot color="#10B981" label="Despachados" />
-              <LegendLine color="#E53935" label="Backlog real" />
+            <div className="flex gap-4 flex-wrap">
+              <LegendDot color="#4F46E5" label="Retira Meli" />
+              <LegendDot color="#F97316" label="Andreani" />
+              <LegendDot color="#10B981" label="Flota Propia" />
+              <LegendDot color="#9CA3AF" label="Otros" />
             </div>
           }
         >
           <ResponsiveContainer width="100%" height={160}>
-            <ComposedChart data={flowChartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+            <BarChart
+              data={volumenChartData}
+              margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
+              barGap={2}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
               <XAxis dataKey="fecha" {...axisProps} />
               <YAxis {...axisProps} />
-              <Tooltip {...tooltipStyle} />
-              <Bar dataKey="volumen" name="Volumen" fill="#F59E0B" radius={[2, 2, 0, 0]} barSize={12} />
-              <Bar dataKey="despachadoReal" name="Despachados" fill="#10B981" radius={[2, 2, 0, 0]} barSize={12} />
-              <Line
-                type="step"
-                dataKey="backlog"
-                name="Backlog Real"
-                stroke="#E53935"
-                strokeWidth={3}
-                dot={false}
+              <Tooltip
+                {...tooltipStyle}
+                formatter={(value: number, name: string) => [
+                  value.toLocaleString('es-AR'),
+                  name === 'retiMeli' ? 'Retira Meli' :
+                  name === 'andreani' ? 'Andreani' :
+                  name === 'flotaPropia' ? 'Flota Propia' : 'Otros',
+                ]}
               />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard
-          title="Pallets despachados por día"
-          legend={
-            <div className="flex gap-4">
-              <LegendDot color="#0099A8" label="Pallets" />
-            </div>
-          }
-        >
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barGap={2}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-              <XAxis dataKey="fecha" {...axisProps} />
-              <YAxis {...axisProps} />
-              <Tooltip {...tooltipStyle} />
-              <Bar dataKey="pallets" name="Pallets" fill="#0099A8" radius={[2, 2, 0, 0]} barSize={28} />
+              <Bar dataKey="retiMeli"   name="retiMeli"   fill="#4F46E5" radius={[2, 2, 0, 0]} barSize={10} />
+              <Bar dataKey="andreani"   name="andreani"   fill="#F97316" radius={[2, 2, 0, 0]} barSize={10} />
+              <Bar dataKey="flotaPropia" name="flotaPropia" fill="#10B981" radius={[2, 2, 0, 0]} barSize={10} />
+              <Bar dataKey="otros"      name="otros"      fill="#9CA3AF" radius={[2, 2, 0, 0]} barSize={10} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
