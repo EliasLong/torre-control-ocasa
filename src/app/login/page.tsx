@@ -28,7 +28,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push('/operacional');
+    router.push('/evento');
   }
 
   return (

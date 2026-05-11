@@ -575,16 +575,18 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
           // For every field: prefer snapshot if > 0, otherwise fallback to live value.
           // This prevents a snapshot saved with 0 (e.g. cron ran before data loaded)
           // from wiping out values that are calculable from the live sheets.
-          byDay[key].bultosB2C = (snap.bultos_b2c || 0) > 0 ? snap.bultos_b2c : (live.bultosB2C || 0);
-          byDay[key].bultosB2B = (snap.bultos_b2b || 0) > 0 ? snap.bultos_b2b : (live.bultosB2B || 0);
+          // Use Math.max for cumulative metrics to allow live updates during the day
+          // while preventing drops to 0 if the sheet is cleared.
+          byDay[key].bultosB2C = Math.max(snap.bultos_b2c || 0, live.bultosB2C || 0);
+          byDay[key].bultosB2B = Math.max(snap.bultos_b2b || 0, live.bultosB2B || 0);
           byDay[key].palletsB2C = snap.pallets_b2c;
           byDay[key].palletsB2B = snap.pallets_b2b;
           byDay[key].tripsB2C = snap.trips_b2c;
           byDay[key].tripsB2B = snap.trips_b2b;
-          byDay[key].despachadosBultos = (snap.despachados_bultos || 0) > 0 ? snap.despachados_bultos : (live.despachadosBultos || 0);
-          byDay[key].camionesDespB2B = (snap.camiones_desp_b2b || 0) > 0 ? snap.camiones_desp_b2b : (live.camionesDespB2B || 0);
-          byDay[key].devoluciones = (snap.devoluciones || 0) > 0 ? snap.devoluciones : (live.devoluciones || 0);
-          byDay[key].incidencias = (snap.incidencias || 0) > 0 ? snap.incidencias : (live.incidencias || 0);
+          byDay[key].despachadosBultos = Math.max(snap.despachados_bultos || 0, live.despachadosBultos || 0);
+          byDay[key].camionesDespB2B = Math.max(snap.camiones_desp_b2b || 0, live.camionesDespB2B || 0);
+          byDay[key].devoluciones = Math.max(snap.devoluciones || 0, live.devoluciones || 0);
+          byDay[key].incidencias = Math.max(snap.incidencias || 0, live.incidencias || 0);
           // ingresados: prefer snapshot if > 0, otherwise fallback to live sheet data
           const snapIng = snap.ingresados || 0;
           const snapIngFlota = snap.ingresados_flota || 0;

@@ -19,7 +19,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace('/login');
     }
     if (user && isPublicPage) {
-      router.replace('/operacional');
+      router.replace('/evento');
     }
   }, [user, loading, isPublicPage, router]);
 

@@ -30,20 +30,20 @@ interface ToolItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-    { href: '/operacional', label: 'Operacional', icon: BarChart3, tab: 'operacional' },
-    { href: '/indicadores-diarios', label: 'Indicadores Diarios', icon: CalendarDays, tab: 'indicadores-diarios' },
-    { href: '/financiero', label: 'Financiero', icon: DollarSign, tab: 'financiero' },
-    { href: '/merma', label: 'Merma', icon: TrendingDown, tab: 'merma' },
-    { href: '/abc-xyz', label: 'ABC-XYZ', icon: Grid3X3, tab: 'abc-xyz' },
-    { href: '/reportes', label: 'Reportes', icon: FileSpreadsheet, tab: 'reportes' },
-    { href: '/tracking', label: 'Tracking', icon: Truck, tab: 'tracking' },
+    // { href: '/operacional', label: 'Operacional', icon: BarChart3, tab: 'operacional' },
+    // { href: '/indicadores-diarios', label: 'Indicadores Diarios', icon: CalendarDays, tab: 'indicadores-diarios' },
+    // { href: '/financiero', label: 'Financiero', icon: DollarSign, tab: 'financiero' },
+    // { href: '/merma', label: 'Merma', icon: TrendingDown, tab: 'merma' },
+    // { href: '/abc-xyz', label: 'ABC-XYZ', icon: Grid3X3, tab: 'abc-xyz' },
+    // { href: '/reportes', label: 'Reportes', icon: FileSpreadsheet, tab: 'reportes' },
+    // { href: '/tracking', label: 'Tracking', icon: Truck, tab: 'tracking' },
     { href: '/evento', label: 'Evento', icon: CalendarCheck, tab: 'evento' },
 ];
 
 const TOOL_ITEMS: ToolItem[] = [
-    { label: 'Incidencias', icon: AlertTriangle, href: '/herramientas/incidencias', tab: 'incidencias' },
-    { label: 'Dock Manager', icon: Package, href: 'https://dock-manager-ocasa-pilar.up.railway.app/operador', external: true },
-    { label: 'Inventario', icon: ClipboardList, href: 'https://inventario-app-umber.vercel.app', external: true },
+    // { label: 'Incidencias', icon: AlertTriangle, href: '/herramientas/incidencias', tab: 'incidencias' },
+    // { label: 'Dock Manager', icon: Package, href: 'https://dock-manager-ocasa-pilar.up.railway.app/operador', external: true },
+    // { label: 'Inventario', icon: ClipboardList, href: 'https://inventario-app-umber.vercel.app', external: true },
 ];
 
 export function Sidebar() {
