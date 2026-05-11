@@ -28,7 +28,7 @@ export function EventoHeader({ diaEvento, avance, estado, targetBultos = 15688, 
           <div className="text-xl font-bold text-[#1A1A1A]">{diaEvento}/8</div>
         </div>
         <div className="bg-[#EFF6FF] px-4 py-2 rounded-lg border border-[#BFDBFE] min-w-[140px]">
-          <div className="text-[#3B82F6] text-xs mb-1 font-semibold">Bultos ingresados</div>
+          <div className="text-[#3B82F6] text-xs mb-1 font-semibold">Bultos Pickeados</div>
           <div className="text-xl font-bold text-[#1D4ED8]">
             {loadingPedidos ? '…' : bultosIngresados != null ? bultosIngresados.toLocaleString('es-AR') : '—'}
           </div>

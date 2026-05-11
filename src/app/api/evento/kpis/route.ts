@@ -143,6 +143,12 @@ function formatDateKey(d: Date): string {
   return `${dd}/${mm}`;
 }
 
+function getTodayAr(): Date {
+  const now = new Date();
+  const arTime = new Date(now.getTime() - (3 * 60 * 60 * 1000));
+  return new Date(arTime.getUTCFullYear(), arTime.getUTCMonth(), arTime.getUTCDate());
+}
+
 // ── Row parsers per sheet type ─────────────────────────────────────────────
 
 interface SheetRow {
@@ -348,7 +354,7 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
   try {
     const EVENT_DAYS: string[] = [];
     const EVENT_DAYS_YYYY_MM_DD: string[] = [];
-    const today = new Date();
+    const today = getTodayAr();
 
     // ── Evento Hot Sale / Cyber: fechas fijas 04/05 → 11/05/2026 ─────────────
     const EVENT_START = new Date(2026, 4, 4);  // 04 May 2026 (month = 0-indexed)
@@ -468,14 +474,9 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
       }
     }
 
-    // For the Volumen por Transporte chart: today's bar = live global total of the sheet
-    // (no date filter — represents the state of the sheet at this moment)
-    // Historical days use the 6am snapshot saved by the cron.
+    // The Volumen por Transporte chart ONLY uses the 6am snapshot saved by the cron.
+    // Live data is intentionally omitted to avoid confusion.
     const todayKey = formatDateKey(today);
-    if (byDay[todayKey]) {
-      byDay[todayKey].ingresados = volumenRetiMeli + volumenAndreani + volumenFlotaPropia + volumenOtros;
-      byDay[todayKey].ingresadosFlota = volumenFlotaPropia;
-    }
 
     // Apply trip counts to byDay
     for (const [day, n] of Object.entries(mergedTripCounts)) {
@@ -531,14 +532,13 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
     for (const key of EVENT_DAYS) {
       const isToday = key === todayKey;
       liveValues[key] = {
-        // For ingresados: only use the global total for the current day.
-        // For historical days, we MUST rely on snapshots.
-        ingresados: isToday ? (volumenRetiMeli + volumenAndreani + volumenFlotaPropia + volumenOtros) : 0,
-        ingresadosFlota: isToday ? volumenFlotaPropia : 0,
-        ingRetiMeli: isToday ? volumenRetiMeli : undefined,
-        ingAndreani: isToday ? volumenAndreani : undefined,
-        ingFlotaPropia: isToday ? volumenFlotaPropia : undefined,
-        ingOtros: isToday ? volumenOtros : undefined,
+        // For ingresados: exclusively use snapshots taken at 6am.
+        ingresados: 0,
+        ingresadosFlota: 0,
+        ingRetiMeli: undefined,
+        ingAndreani: undefined,
+        ingFlotaPropia: undefined,
+        ingOtros: undefined,
         bultosB2C: byDay[key]?.bultosB2C || 0,
         bultosB2B: byDay[key]?.bultosB2B || 0,
         despachadosBultos: byDay[key]?.despachadosBultos || 0,

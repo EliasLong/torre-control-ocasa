@@ -9,8 +9,11 @@ export async function GET() {
     // 1. Fetch current metrics
     const data = await getEventoData();
 
-    // 2. Identify "today" date key
-    const today = new Date();
+    // 2. Identify "today" date key (Argentina time UTC-3)
+    const now = new Date();
+    const arTime = new Date(now.getTime() - (3 * 60 * 60 * 1000));
+    const today = new Date(arTime.getUTCFullYear(), arTime.getUTCMonth(), arTime.getUTCDate());
+    
     const dd = String(today.getDate()).padStart(2, '0');
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dateKey = `${dd}/${mm}`;

@@ -36,11 +36,22 @@ interface EventoChartsProps {
 // ── Styles ─────────────────────────────────────────────────────────────────
 const tooltipStyle = {
   contentStyle: {
-    background: '#fff',
-    border: '1px solid #E0E0E0',
+    background: '#1F2937',
+    border: 'none',
     borderRadius: '8px',
-    fontSize: '11px',
-    color: '#1A1A1A',
+    fontSize: '12px',
+    color: '#F9FAFB',
+    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+  },
+  itemStyle: {
+    color: '#F9FAFB',
+  },
+  labelStyle: {
+    color: '#F9FAFB',
+    fontWeight: 'bold',
+    marginBottom: '4px',
+    borderBottom: '1px solid #374151',
+    paddingBottom: '4px',
   },
 };
 
@@ -134,18 +145,9 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
       };
     }
 
-    // For today (live): use real category splits from the global totals
-    if (d.fecha === lastDayWithIngresados && totalGlobal > 0) {
-      return {
-        fecha: d.fecha,
-        retiMeli: volumenRetiMeli,
-        andreani: volumenAndreani,
-        flotaPropia: volumenFlotaPropia,
-        otros: volumenOtros,
-      };
-    }
+    // For historical snapshots without detailed breakdown: distribute proportionally
+    // using current global ratios as a fallback
 
-    // For historical snapshots: distribute proportionally using current global ratios
     if (totalGlobal > 0) {
       return {
         fecha: d.fecha,
@@ -194,7 +196,22 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
             <XAxis dataKey="fecha" {...axisProps} />
             <YAxis {...axisProps} yAxisId="left" />
             <YAxis {...axisProps} yAxisId="right" orientation="right" />
-            <Tooltip {...tooltipStyle} />
+            <Tooltip
+              {...tooltipStyle}
+              labelFormatter={(label, payload) => {
+                if (payload && payload.length > 0) {
+                  const data = payload[0].payload;
+                  const total = (data.bultosB2C || 0) + (data.bultosB2B || 0);
+                  return (
+                    <div className="mb-1 border-b border-[#374151] pb-1">
+                      <span className="font-bold">{label}</span>
+                      <span className="ml-2 text-emerald-400 font-bold">Picking Total: {total.toLocaleString('es-AR')}</span>
+                    </div>
+                  );
+                }
+                return label;
+              }}
+            />
             
             {/* Daily Bars */}
             <Bar dataKey="bultosB2C" yAxisId="left" name="B2C" fill="#1E3A8A" radius={[2, 2, 0, 0]} barSize={14} />
@@ -239,7 +256,7 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
       {/* Two-column: Viajes + Volumen por Transporte */}
       <div className="grid grid-cols-2 gap-4">
         <ChartCard
-          title="Viajes (camiones) despachados por día"
+          title="Viajes despachados B2C y B2B por dia."
           legend={
             <div className="flex gap-4">
               <LegendDot color="#ffab40" label="Viajes" />
@@ -252,7 +269,14 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
               <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
               <XAxis dataKey="fecha" {...axisProps} />
               <YAxis {...axisProps} />
-              <Tooltip {...tooltipStyle} />
+              <Tooltip
+                {...tooltipStyle}
+                labelFormatter={(label) => (
+                  <div className="mb-1 border-b border-[#374151] pb-1 font-bold">
+                    {label}
+                  </div>
+                )}
+              />
               <Bar dataKey="trips" name="Viajes" fill="#ffab40" radius={[2, 2, 0, 0]} barSize={28} />
               <ReferenceLine y={avgTrips} stroke="#6B7280" strokeWidth={2} />
             </ComposedChart>
@@ -281,6 +305,19 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
               <YAxis {...axisProps} />
               <Tooltip
                 {...tooltipStyle}
+                labelFormatter={(label, payload) => {
+                  if (payload && payload.length > 0) {
+                    const data = payload[0].payload;
+                    const total = (data.retiMeli || 0) + (data.andreani || 0) + (data.flotaPropia || 0) + (data.otros || 0);
+                    return (
+                      <div className="mb-1 border-b border-[#374151] pb-1">
+                        <span className="font-bold">{label}</span>
+                        <span className="ml-2 text-blue-400 font-bold">Total: {total.toLocaleString('es-AR')}</span>
+                      </div>
+                    );
+                  }
+                  return label;
+                }}
                 formatter={(value: number, name: string) => [
                   value.toLocaleString('es-AR'),
                   name === 'retiMeli' ? 'Retira Meli' :

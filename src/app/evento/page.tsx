@@ -82,7 +82,7 @@ export default function EventoPage() {
     }
   }, [activeDay]);
 
-  // Bultos Ingresados: (Eventual: switched to total picking sum)
+  // Bultos Pickeados: (Eventual: switched to total picking sum)
   // const { total: bultosIngresados, loading: loadingPedidos, lastSync } = usePedidosIngresados();
   const bultosIngresados = 0;
   const loadingPedidos = false;
@@ -132,7 +132,7 @@ export default function EventoPage() {
   const isBacklogComplete = totalBultos >= BACKLOG_TARGET;
   const backlogDiff = Math.max(0, BACKLOG_TARGET - totalBultos);
 
-  // Avance Limpieza: estimated days = backlogDiff / avgBultosPerDay
+  // Días para completar meta: estimated days = backlogDiff / avgBultosPerDay
   const estDaysRemaining = !isBacklogComplete && avgBultosPerDay > 0
     ? Math.ceil(backlogDiff / avgBultosPerDay)
     : 0;
@@ -304,7 +304,7 @@ export default function EventoPage() {
                 highlight
               />
               <EventoCard
-                label="Avance Limpieza"
+                label="Días para completar meta"
                 value={!isBacklogComplete ? `${estDaysRemaining} días` : "Completado"}
                 subtitle={!isBacklogComplete ? `Ritmo: ${fmt(avgBultosPerDay)}/día` : "Meta alcanzada"}
                 accent="cyan"
