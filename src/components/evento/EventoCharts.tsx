@@ -202,6 +202,7 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
               {...axisProps} 
               yAxisId="right" 
               orientation="right" 
+              domain={[0, 16000]}
               label={{ value: 'Bultos', angle: 90, position: 'insideRight', style: { fill: '#6B7280', fontSize: 10 } }} 
             />
             <Tooltip {...tooltipStyle} />

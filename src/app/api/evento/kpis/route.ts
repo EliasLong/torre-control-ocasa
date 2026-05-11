@@ -515,10 +515,15 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
       const key = `${parts[2]}/${parts[1]}`;
       if (!EVENT_DAYS.includes(key)) continue;
       const cantidad = Math.abs(mov.cantidad);
-      const isB2C = mov.cliente === 'B2C';
+      const cli = (mov.cliente || '').toUpperCase();
+      const lpn = (mov.lpnTransferido || '').toUpperCase();
+
+      const isB2C = cli === 'B2C' || lpn.startsWith('B2C');
+      const isB2B = cli === 'B2B' || lpn.startsWith('B2B');
+
       if (isB2C) {
         byDay[key].bultosB2C += cantidad;
-      } else {
+      } else if (isB2B) {
         byDay[key].bultosB2B += cantidad;
       }
     }
