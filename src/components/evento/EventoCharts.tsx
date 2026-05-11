@@ -44,7 +44,7 @@ const tooltipStyle = {
     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
   },
   itemStyle: {
-    color: '#F9FAFB',
+    fontWeight: '500',
   },
   labelStyle: {
     color: '#F9FAFB',
@@ -181,10 +181,10 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
         title="Forecast vs Picking"
         legend={
           <div className="flex gap-4 flex-wrap">
-            <LegendDot color="#1E3A8A" label="B2C" />
-            <LegendDot color="#7C3AED" label="B2B" />
-            <LegendDot color="#CBD5E1" label="Forecast (Día)" />
-            <LegendLine color="#10B981" label="Progreso Real (Acum.)" />
+            <LegendDot color="#3B82F6" label="B2C" />
+            <LegendDot color="#A855F7" label="B2B" />
+            <LegendDot color="#94A3B8" label="Forecast (Día)" />
+            <LegendLine color="#10B981" label="Picking Total" />
             <LegendLine color="#94A3B8" label="Progreso Forecast (Acum.)" dashed />
             <LegendLine color="#64748B" label="Meta Final" dashed />
           </div>
@@ -214,9 +214,9 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
             />
             
             {/* Daily Bars */}
-            <Bar dataKey="bultosB2C" yAxisId="left" name="B2C" fill="#1E3A8A" radius={[2, 2, 0, 0]} barSize={14} />
-            <Bar dataKey="bultosB2B" yAxisId="left" name="B2B" fill="#7C3AED" radius={[2, 2, 0, 0]} barSize={14} />
-            <Bar dataKey="forecast" yAxisId="left" name="Forecast (Día)" fill="#CBD5E1" radius={[2, 2, 0, 0]} barSize={14} />
+            <Bar dataKey="bultosB2C" yAxisId="left" name="B2C" fill="#3B82F6" radius={[2, 2, 0, 0]} barSize={14} />
+            <Bar dataKey="bultosB2B" yAxisId="left" name="B2B" fill="#A855F7" radius={[2, 2, 0, 0]} barSize={14} />
+            <Bar dataKey="forecast" yAxisId="left" name="Forecast (Día)" fill="#94A3B8" radius={[2, 2, 0, 0]} barSize={14} />
             
             {/* Final Meta Line */}
             <ReferenceLine 
@@ -241,9 +241,9 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
             />
             <Line
               type="monotone"
-              dataKey="accReal"
-              yAxisId="right"
-              name="Progreso Real (Acum.)"
+              dataKey="totalBultos"
+              yAxisId="left"
+              name="Picking Total"
               stroke="#10B981"
               strokeWidth={3}
               dot={{ r: 4, fill: '#10B981', strokeWidth: 0 }}
