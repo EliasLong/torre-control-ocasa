@@ -36,11 +36,7 @@ export function EventoHeader({ diaEvento, avance, estado, targetBultos = 15688, 
         <div className="bg-[#F5F5F5] px-4 py-2 rounded-lg border border-[#E0E0E0] min-w-[120px]">
           <div className="text-[#9CA3AF] text-xs mb-1">Avance</div>
           <div className="text-xl font-bold text-[#1A1A1A]">{avance}%</div>
-        </div>
-        <div className="bg-[#F5F5F5] px-4 py-2 rounded-lg border border-[#E0E0E0] min-w-[120px]">
-          <div className="text-[#9CA3AF] text-xs mb-1">Estado</div>
-          <div className="text-xl font-bold" style={{ color: textColorEstado }}>{estado}</div>
-        </div>
+      </div>
       </div>
     </header>
   );
