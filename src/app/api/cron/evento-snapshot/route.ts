@@ -63,12 +63,12 @@ export async function GET() {
         camiones_desp_b2b  = CASE WHEN EXCLUDED.camiones_desp_b2b  > 0 THEN EXCLUDED.camiones_desp_b2b  ELSE evento_kpi_snapshots.camiones_desp_b2b  END,
         devoluciones       = CASE WHEN EXCLUDED.devoluciones       > 0 THEN EXCLUDED.devoluciones       ELSE evento_kpi_snapshots.devoluciones       END,
         -- Ingresados: Only update if current value is 0 (first run of the day)
-        ingresados         = CASE WHEN evento_kpi_snapshots.ingresados = 0 THEN EXCLUDED.ingresados ELSE evento_kpi_snapshots.ingresados END,
-        ingresados_flota   = CASE WHEN evento_kpi_snapshots.ingresados_flota = 0 THEN EXCLUDED.ingresados_flota ELSE evento_kpi_snapshots.ingresados_flota END,
-        ing_reti_meli      = CASE WHEN evento_kpi_snapshots.ing_reti_meli = 0 THEN EXCLUDED.ing_reti_meli ELSE evento_kpi_snapshots.ing_reti_meli END,
-        ing_andreani       = CASE WHEN evento_kpi_snapshots.ing_andreani = 0 THEN EXCLUDED.ing_andreani ELSE evento_kpi_snapshots.ing_andreani END,
-        ing_flota_propia   = CASE WHEN evento_kpi_snapshots.ing_flota_propia = 0 THEN EXCLUDED.ing_flota_propia ELSE evento_kpi_snapshots.ing_flota_propia END,
-        ing_otros          = CASE WHEN evento_kpi_snapshots.ing_otros = 0 THEN EXCLUDED.ing_otros ELSE evento_kpi_snapshots.ing_otros END,
+        ingresados         = CASE WHEN COALESCE(evento_kpi_snapshots.ingresados, 0) = 0 THEN EXCLUDED.ingresados ELSE evento_kpi_snapshots.ingresados END,
+        ingresados_flota   = CASE WHEN COALESCE(evento_kpi_snapshots.ingresados_flota, 0) = 0 THEN EXCLUDED.ingresados_flota ELSE evento_kpi_snapshots.ingresados_flota END,
+        ing_reti_meli      = CASE WHEN COALESCE(evento_kpi_snapshots.ing_reti_meli, 0) = 0 THEN EXCLUDED.ing_reti_meli ELSE evento_kpi_snapshots.ing_reti_meli END,
+        ing_andreani       = CASE WHEN COALESCE(evento_kpi_snapshots.ing_andreani, 0) = 0 THEN EXCLUDED.ing_andreani ELSE evento_kpi_snapshots.ing_andreani END,
+        ing_flota_propia   = CASE WHEN COALESCE(evento_kpi_snapshots.ing_flota_propia, 0) = 0 THEN EXCLUDED.ing_flota_propia ELSE evento_kpi_snapshots.ing_flota_propia END,
+        ing_otros          = CASE WHEN COALESCE(evento_kpi_snapshots.ing_otros, 0) = 0 THEN EXCLUDED.ing_otros ELSE evento_kpi_snapshots.ing_otros END,
         incidencias        = CASE WHEN EXCLUDED.incidencias        > 0 THEN EXCLUDED.incidencias        ELSE evento_kpi_snapshots.incidencias        END,
         updated_at = NOW();
     `;
