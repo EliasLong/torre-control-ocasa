@@ -236,7 +236,7 @@ async function fetchTripCounts(
     // Parse the date portion (ignore any time suffix)
     const datePart = raw.split(' ')[0]; // handles "27/4/2026 9:05:19" → "27/4/2026"
     const d = parseSheetDate(datePart);
-    if (!d) continue;
+    if (!d || d.getFullYear() !== 2026) continue;
 
     const key = formatDateKey(d);
     if (!eventDays.includes(key)) continue;
@@ -420,7 +420,7 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
     });
 
     function addToDay(key: string, b2c: boolean, row: SheetRow) {
-      if (row.dispatchDate) {
+      if (row.dispatchDate && row.dispatchDate.getFullYear() === 2026) {
         const dispatchKey = formatDateKey(row.dispatchDate);
         if (EVENT_DAYS.includes(dispatchKey)) {
           byDay[dispatchKey].despachadosBultos += row.bultos;
@@ -462,6 +462,8 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
     let volumenFlotaPropia = 0;
     let volumenOtros = 0;
     for (const row of allIng) {
+      // Only process 2026 data
+      if (row.date && row.date.getFullYear() !== 2026) continue;
       const t = (row.transportType || '').toUpperCase();
       if (t.includes('MELI')) {
         volumenRetiMeli += row.bultos;
@@ -486,7 +488,7 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
     }
 
     for (const row of [...pl2dev, ...pl3dev]) {
-      if (row.date) {
+      if (row.date && row.date.getFullYear() === 2026) {
         const key = formatDateKey(row.date);
         if (EVENT_DAYS.includes(key)) {
           byDay[key].devoluciones += row.bultos;
@@ -495,7 +497,7 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
     }
 
     for (const row of incidencias) {
-      if (row.date) {
+      if (row.date && row.date.getFullYear() === 2026) {
         const key = formatDateKey(row.date);
         if (EVENT_DAYS.includes(key)) {
           byDay[key].incidencias += row.bultos;
@@ -505,6 +507,8 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
 
     for (const mov of pickingMovs) {
       if (!isPicking(mov)) continue;
+      // Only process 2026 data
+      if (!mov.fecha.startsWith('2026')) continue;
       const parts = mov.fecha.split('-');
       if (parts.length !== 3) continue;
       const key = `${parts[2]}/${parts[1]}`;
