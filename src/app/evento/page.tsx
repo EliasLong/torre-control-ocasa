@@ -71,9 +71,14 @@ export default function EventoPage() {
       if (!res.ok) throw new Error('Error al obtener datos');
       const json: EventoKPIsResponse = await res.json();
       setData(json);
-      // Auto-select last day with data if none selected
+      // Auto-select today if available, otherwise last day with data
       if (!activeDay && json.availableDays.length > 0) {
-        setActiveDay(json.availableDays[json.availableDays.length - 1]);
+        const todayStr = formatDateKey(new Date());
+        if (json.availableDays.includes(todayStr)) {
+          setActiveDay(todayStr);
+        } else {
+          setActiveDay(json.availableDays[json.availableDays.length - 1]);
+        }
       }
     } catch (e: any) {
       setError(e.message || 'Error desconocido');

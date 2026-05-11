@@ -16,7 +16,7 @@ export function EventoHeader({ diaEvento, avance, estado, targetBultos = 15688, 
     <header className="bg-white border border-[#E0E0E0] text-[#1A1A1A] p-4 rounded-xl flex items-center justify-between shadow-sm mb-6">
       <div className="flex items-center gap-4">
         <div className="flex flex-col">
-          <h1 className="text-2xl font-bold tracking-tight uppercase text-[#1A1A1A]">HOT SALE - CYBER</h1>
+          <h1 className="text-2xl font-bold tracking-tight uppercase text-[#1A1A1A]">HOT SALE</h1>
           <p className="text-[#9CA3AF] text-sm">
             11-18 mayo · 8 días · Forecast: {targetBultos.toLocaleString('es-AR')} bultos 
           </p>
