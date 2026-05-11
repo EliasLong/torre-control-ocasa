@@ -297,7 +297,7 @@ export default function EventoPage() {
                 accent="amber"
               />
               <EventoCard
-                label="Backlog pendiente"
+                label="Forecast Pendiente"
                 value={fmt(backlogDiff)}
                 subtitle={`Meta: ${fmt(BACKLOG_TARGET)}`}
                 accent={isBacklogComplete ? "green" : "red"}
@@ -305,7 +305,7 @@ export default function EventoPage() {
               />
               <EventoCard
                 label="Días para completar meta"
-                value={!isBacklogComplete ? `${estDaysRemaining} días` : "Completado"}
+                value={!isBacklogComplete ? (estDaysRemaining > 10 ? "-" : `${estDaysRemaining} días`) : "Completado"}
                 subtitle={!isBacklogComplete ? `Ritmo: ${fmt(avgBultosPerDay)}/día` : "Meta alcanzada"}
                 accent="cyan"
               />

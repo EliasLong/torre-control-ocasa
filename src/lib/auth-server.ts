@@ -105,24 +105,11 @@ export async function getUserByEmail(email: string): Promise<DbUser | null> {
 // ----------------------------------------------------------------
 
 export async function getSessionUser(): Promise<AppUser | null> {
-    // LOGIN TEMPORALMENTE DESACTIVADO — devuelve usuario mock superadmin
-    return {
-        id: 'mock-user-id',
-        email: 'admin@ocasa.com',
-        name: 'Admin Global',
-        password: '',
-        role: 'superadmin',
-        status: 'approved',
-        tabs: [],
-        createdAt: new Date().toISOString(),
-    }
-
-    // Restaurar cuando el login esté activo:
-    // const token = await getSessionCookie()
-    // if (!token) return null
-    // const userId = await verifySessionToken(token)
-    // if (!userId) return null
-    // return getUserById(userId)
+    const token = await getSessionCookie()
+    if (!token) return null
+    const userId = await verifySessionToken(token)
+    if (!userId) return null
+    return getUserById(userId)
 }
 
 // ----------------------------------------------------------------

@@ -19,7 +19,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace('/login');
     }
     if (user && isPublicPage) {
-      router.replace('/operacional');
+      if (user.email === 'evento@ocasa.com') {
+        router.replace('/evento');
+      } else {
+        router.replace('/operacional');
+      }
+    }
+    
+    // Strict guard for the evento user
+    if (user && !isPublicPage && user.email === 'evento@ocasa.com') {
+      if (!pathname.startsWith('/evento')) {
+        router.replace('/evento');
+      }
     }
   }, [user, loading, isPublicPage, router]);
 

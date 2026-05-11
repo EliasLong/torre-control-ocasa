@@ -7,7 +7,7 @@ import { isAdmin, canAccessTab } from '@/lib/auth';
 interface AuthContextValue {
     user: AppUser | null;
     loading: boolean;
-    login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+    login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; user?: any }>;
     register: (email: string, name: string, password: string) => Promise<{ ok: boolean; error?: string }>;
     logout: () => Promise<void>;
     refresh: () => Promise<void>;
@@ -16,30 +16,21 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const [user, setUser] = useState<AppUser | null>({
-        id: 'mock-user-id',
-        email: 'admin@ocasa.com',
-        name: 'Admin Global',
-        role: 'superadmin',
-        status: 'approved',
-        tabs: [],
-        createdAt: new Date().toISOString()
-    });
+    const [user, setUser] = useState<AppUser | null>(null);
     const [loading, setLoading] = useState(true);
 
     const refresh = useCallback(async () => {
-        // LOGIN TEMPORALMENTE DESACTIVADO
-        // try {
-        //     const res = await fetch('/api/auth/me');
-        //     if (res.ok) {
-        //         const data = await res.json();
-        //         setUser(data);
-        //     } else {
-        //         setUser(null);
-        //     }
-        // } catch {
-        //     setUser(null);
-        // }
+        try {
+            const res = await fetch('/api/auth/me');
+            if (res.ok) {
+                const data = await res.json();
+                setUser(data);
+            } else {
+                setUser(null);
+            }
+        } catch {
+            setUser(null);
+        }
     }, []);
 
     useEffect(() => {
@@ -55,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await res.json();
         if (!res.ok) return { ok: false, error: data.error ?? 'Error al iniciar sesión' };
         setUser(data);
-        return { ok: true };
+        return { ok: true, user: data };
     }, []);
 
     const register = useCallback(async (email: string, name: string, password: string) => {

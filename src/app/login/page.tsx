@@ -28,7 +28,11 @@ export default function LoginPage() {
       return;
     }
 
-    router.push('/operacional');
+    if (result.user?.email === 'evento@ocasa.com') {
+      router.push('/evento');
+    } else {
+      router.push('/operacional');
+    }
   }
 
   return (
