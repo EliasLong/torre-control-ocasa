@@ -16,21 +16,30 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const [user, setUser] = useState<AppUser | null>(null);
+    const [user, setUser] = useState<AppUser | null>({
+        id: 'mock-user-id',
+        email: 'admin@ocasa.com',
+        name: 'Admin Global',
+        role: 'superadmin',
+        status: 'approved',
+        tabs: [],
+        createdAt: new Date().toISOString()
+    });
     const [loading, setLoading] = useState(true);
 
     const refresh = useCallback(async () => {
-        try {
-            const res = await fetch('/api/auth/me');
-            if (res.ok) {
-                const data = await res.json();
-                setUser(data);
-            } else {
-                setUser(null);
-            }
-        } catch {
-            setUser(null);
-        }
+        // LOGIN TEMPORALMENTE DESACTIVADO
+        // try {
+        //     const res = await fetch('/api/auth/me');
+        //     if (res.ok) {
+        //         const data = await res.json();
+        //         setUser(data);
+        //     } else {
+        //         setUser(null);
+        //     }
+        // } catch {
+        //     setUser(null);
+        // }
     }, []);
 
     useEffect(() => {
