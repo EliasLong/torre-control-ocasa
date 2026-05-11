@@ -356,9 +356,9 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
     const EVENT_DAYS_YYYY_MM_DD: string[] = [];
     const today = getTodayAr();
 
-    // ── Evento Hot Sale / Cyber: fechas fijas 04/05 → 11/05/2026 ─────────────
-    const EVENT_START = new Date(2026, 4, 4);  // 04 May 2026 (month = 0-indexed)
-    const EVENT_END   = new Date(2026, 4, 11); // 11 May 2026
+    // ── Evento Hot Sale / Cyber: fechas fijas 11/05 → 18/05/2026 ─────────────
+    const EVENT_START = new Date(2026, 4, 11); // 11 May 2026 (month = 0-indexed)
+    const EVENT_END   = new Date(2026, 4, 18); // 18 May 2026
     for (let cur = new Date(EVENT_START); cur <= EVENT_END; cur.setDate(cur.getDate() + 1)) {
       EVENT_DAYS.push(formatDateKey(cur));
       const yyyy = cur.getFullYear();

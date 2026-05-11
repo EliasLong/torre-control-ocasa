@@ -196,22 +196,7 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
             <XAxis dataKey="fecha" {...axisProps} />
             <YAxis {...axisProps} yAxisId="left" />
             <YAxis {...axisProps} yAxisId="right" orientation="right" />
-            <Tooltip
-              {...tooltipStyle}
-              labelFormatter={(label, payload) => {
-                if (payload && payload.length > 0) {
-                  const data = payload[0].payload;
-                  const total = (data.bultosB2C || 0) + (data.bultosB2B || 0);
-                  return (
-                    <div className="mb-1 border-b border-[#374151] pb-1">
-                      <span className="font-bold">{label}</span>
-                      <span className="ml-2 text-emerald-400 font-bold">Picking Total: {total.toLocaleString('es-AR')}</span>
-                    </div>
-                  );
-                }
-                return label;
-              }}
-            />
+            <Tooltip {...tooltipStyle} />
             
             {/* Daily Bars */}
             <Bar dataKey="bultosB2C" yAxisId="left" name="B2C" fill="#3B82F6" radius={[2, 2, 0, 0]} barSize={14} />
