@@ -184,7 +184,7 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
             <LegendDot color="#3B82F6" label="B2C" />
             <LegendDot color="#A855F7" label="B2B" />
             <LegendDot color="#94A3B8" label="Forecast (Día)" />
-            <LegendLine color="#10B981" label="Picking Total" />
+            <LegendLine color="#10B981" label="Picking Total (Acumulado)" />
             <LegendLine color="#94A3B8" label="Progreso Forecast (Acum.)" dashed />
             <LegendLine color="#64748B" label="Meta Final" dashed />
           </div>
@@ -194,8 +194,17 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
           <ComposedChart data={enrichedData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }} barGap={2}>
             <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
             <XAxis dataKey="fecha" {...axisProps} />
-            <YAxis {...axisProps} yAxisId="left" />
-            <YAxis {...axisProps} yAxisId="right" orientation="right" />
+            <YAxis 
+              {...axisProps} 
+              yAxisId="left" 
+              label={{ value: 'Bultos', angle: -90, position: 'insideLeft', style: { fill: '#6B7280', fontSize: 10 } }} 
+            />
+            <YAxis 
+              {...axisProps} 
+              yAxisId="right" 
+              orientation="right" 
+              label={{ value: 'Bultos', angle: 90, position: 'insideRight', style: { fill: '#6B7280', fontSize: 10 } }} 
+            />
             <Tooltip {...tooltipStyle} />
             
             {/* Daily Bars */}
@@ -226,9 +235,9 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
             />
             <Line
               type="monotone"
-              dataKey="totalBultos"
-              yAxisId="left"
-              name="Picking Total"
+              dataKey="accReal"
+              yAxisId="right"
+              name="Picking Total (Acumulado)"
               stroke="#10B981"
               strokeWidth={3}
               dot={{ r: 4, fill: '#10B981', strokeWidth: 0 }}
