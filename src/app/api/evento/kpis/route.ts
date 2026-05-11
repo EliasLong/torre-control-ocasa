@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { getMovimientosPorFechas, isPicking } from '@/services/indicadores.service';
 import { query } from '@/lib/sql';
 // ── Sheet IDs ──────────────────────────────────────────────────────────────

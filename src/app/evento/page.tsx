@@ -67,7 +67,7 @@ export default function EventoPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/evento/kpis');
+      const res = await fetch('/api/evento/kpis', { cache: 'no-store' });
       if (!res.ok) throw new Error('Error al obtener datos');
       const json: EventoKPIsResponse = await res.json();
       setData(json);
