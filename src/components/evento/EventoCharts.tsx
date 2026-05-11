@@ -164,12 +164,12 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
   // Calculate cumulative progress for the right Y-axis
   let accReal = 0;
   let accForecast = 0;
-  const enrichedData = chartData.map(d => {
+  const enrichedData = chartData.map((d, i) => {
     accReal += d.totalBultos;
     accForecast += d.forecast;
     return {
       ...d,
-      accReal,
+      accReal: i <= lastDayWithDataIndex ? accReal : null,
       accForecast
     };
   });
@@ -185,7 +185,6 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
             <LegendDot color="#A855F7" label="B2B" />
             <LegendDot color="#94A3B8" label="Forecast (Día)" />
             <LegendLine color="#10B981" label="Picking Total (Acumulado)" />
-            <LegendLine color="#94A3B8" label="Progreso Forecast (Acum.)" dashed />
             <LegendLine color="#64748B" label="Meta Final" dashed />
           </div>
         }
@@ -222,21 +221,11 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
               label={{ position: 'top', value: `Meta Final: ${targetBultos}`, fill: '#64748B', fontSize: 10 }}
             />
             
-            {/* Cumulative Lines */}
+            {/* Lines */}
             <Line
               type="monotone"
-              dataKey="accForecast"
-              yAxisId="right"
-              name="Progreso Forecast (Acum.)"
-              stroke="#94A3B8"
-              strokeWidth={2}
-              strokeDasharray="5 5"
-              dot={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="accReal"
-              yAxisId="right"
+              dataKey="totalBultos"
+              yAxisId="left"
               name="Picking Total (Acumulado)"
               stroke="#10B981"
               strokeWidth={3}
