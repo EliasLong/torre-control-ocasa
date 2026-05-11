@@ -533,6 +533,7 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
       despachadosBultos: number; camionesDespB2B: number;
       devoluciones: number; incidencias: number;
     }> = {};
+
     for (const key of EVENT_DAYS) {
       const isToday = key === todayKey;
       liveValues[key] = {
