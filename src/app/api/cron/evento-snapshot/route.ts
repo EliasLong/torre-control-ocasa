@@ -4,8 +4,13 @@ import { query } from '@/lib/sql';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const forceDate = searchParams.get('date');
+    const forceB2C = searchParams.get('b2c');
+    const forceB2B = searchParams.get('b2b');
+
     // 1. Fetch current metrics
     const data = await getEventoData();
 
@@ -14,18 +19,25 @@ export async function GET() {
     const arTime = new Date(now.getTime() - (3 * 60 * 60 * 1000));
     const today = new Date(arTime.getUTCFullYear(), arTime.getUTCMonth(), arTime.getUTCDate());
     
-    const dd = String(today.getDate()).padStart(2, '0');
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dateKey = `${dd}/${mm}`;
-    
-    // YYYY-MM-DD for PostgreSQL DATE column
-    const yyyy = today.getFullYear();
-    const sqlDate = `${yyyy}-${mm}-${dd}`;
+    let dd = String(today.getDate()).padStart(2, '0');
+    let mm = String(today.getMonth() + 1).padStart(2, '0');
+    let dateKey = `${dd}/${mm}`;
+    let sqlDate = `${today.getFullYear()}-${mm}-${dd}`;
 
-    const todayKPIs = data.byDay[dateKey];
-    if (!todayKPIs) {
-      return NextResponse.json({ error: 'No data found for today' }, { status: 400 });
+    if (forceDate) {
+      sqlDate = forceDate; // e.g. "2026-05-11"
+      const parts = forceDate.split('-');
+      dateKey = `${parts[2]}/${parts[1]}`;
     }
+
+    const todayKPIs = data.byDay[dateKey] || {
+      bultosB2C: 0, bultosB2B: 0, palletsB2C: 0, palletsB2B: 0,
+      tripsB2C: 0, tripsB2B: 0, despachadosBultos: 0, camionesDespB2B: 0,
+      devoluciones: 0, incidencias: 0
+    };
+
+    if (forceB2C) todayKPIs.bultosB2C = parseInt(forceB2C, 10);
+    if (forceB2B) todayKPIs.bultosB2B = parseInt(forceB2B, 10);
 
     // 3. Save full backup of the Ingresados sheet
     // We fetch all rows from both ING sheets to satisfy "store the whole sheet"

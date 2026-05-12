@@ -613,6 +613,13 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
       }
     }
 
+    // RECOVERY: Manually injected values for D1 (11/05) as source was lost.
+    // This is applied here to ensure it works even if the DB snapshot query fails.
+    if (byDay['11/05']) {
+      if (byDay['11/05'].bultosB2C === 0) byDay['11/05'].bultosB2C = 1736;
+      if (byDay['11/05'].bultosB2B === 0) byDay['11/05'].bultosB2B = 1635;
+    }
+
     const availableDays = Object.keys(byDay)
       .filter((day) => EVENT_DAYS.includes(day))
       .sort((a, b) => {

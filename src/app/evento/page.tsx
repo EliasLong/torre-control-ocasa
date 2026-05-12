@@ -118,7 +118,7 @@ export default function EventoPage() {
   const totalPallets = totals.palletsB2C + totals.palletsB2B;
   const numDays = data?.availableDays.length || 1;
   const avgBultosPerDay = Math.round(totalBultos / numDays);
-  const targetBultos = 15688;
+  const targetBultos = 15888;
 
   // Day-level
   const dayBultosB2C = dayData?.bultosB2C || 0;
@@ -133,7 +133,7 @@ export default function EventoPage() {
   const dayPickedTotal = dayBultosB2C + dayBultosB2B;
   const dayDevolucionesPct = dayPickedTotal > 0 ? (dayDevoluciones / dayPickedTotal * 100).toFixed(3) : "0.000";
 
-  const BACKLOG_TARGET = 15688;
+  const BACKLOG_TARGET = 15888;
   const isBacklogComplete = totalBultos >= BACKLOG_TARGET;
   const backlogDiff = Math.max(0, BACKLOG_TARGET - totalBultos);
 

@@ -116,7 +116,7 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
   }
   const avgPace = daysElapsed > 0 ? totalPickedSoFar / daysElapsed : 0;
 
-  const BACKLOG_TARGET = 15688;
+  const BACKLOG_TARGET = 15888;
   const metaDiaria = Math.round(targetBultos / chartData.length);
 
   // Total volumen = all 4 categories (global, no date filter)
@@ -161,16 +161,14 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
     return { fecha: d.fecha, retiMeli: 0, andreani: 0, flotaPropia: total, otros: 0 };
   });
 
-  // Calculate cumulative progress for the right Y-axis
+  // Enrich data: cumulative picking sum, null for future days
   let accReal = 0;
-  let accForecast = 0;
   const enrichedData = chartData.map((d, i) => {
     accReal += d.totalBultos;
-    accForecast += d.forecast;
     return {
       ...d,
-      accReal: i <= lastDayWithDataIndex ? accReal : null,
-      accForecast
+      // pickingTotal accumulates only for days that have already passed
+      pickingTotal: i <= lastDayWithDataIndex ? accReal : null,
     };
   });
 
@@ -184,7 +182,7 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
             <LegendDot color="#3B82F6" label="B2C" />
             <LegendDot color="#A855F7" label="B2B" />
             <LegendDot color="#94A3B8" label="Forecast (Día)" />
-            <LegendLine color="#10B981" label="Picking Total (Acumulado)" />
+            <LegendLine color="#10B981" label="Picking Total (Acum.)" />
             <LegendLine color="#64748B" label="Meta Final" dashed />
           </div>
         }
@@ -195,44 +193,55 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
             <XAxis dataKey="fecha" {...axisProps} />
             <YAxis 
               {...axisProps} 
-              yAxisId="left" 
-              label={{ value: 'Bultos', angle: -90, position: 'insideLeft', style: { fill: '#6B7280', fontSize: 10 } }} 
+              yAxisId="left"
+              label={{ value: 'Bultos', angle: -90, position: 'insideLeft', offset: 10, style: { fill: '#6B7280', fontSize: 10 } }} 
             />
             <YAxis 
               {...axisProps} 
               yAxisId="right" 
-              orientation="right" 
-              domain={[0, 16000]}
-              label={{ value: 'Bultos', angle: 90, position: 'insideRight', style: { fill: '#6B7280', fontSize: 10 } }} 
+              orientation="right"
+              domain={[0, targetBultos]}
+              ticks={[0, 5000, 10000, 15000, targetBultos]}
+              tickFormatter={(v) => v.toLocaleString('es-AR')}
+              label={{ value: 'Bultos', angle: 90, position: 'insideRight', offset: 10, style: { fill: '#6B7280', fontSize: 10 } }} 
             />
             <Tooltip {...tooltipStyle} />
             
-            {/* Daily Bars */}
-            <Bar dataKey="bultosB2C" yAxisId="left" name="B2C" fill="#3B82F6" radius={[2, 2, 0, 0]} barSize={14} />
-            <Bar dataKey="bultosB2B" yAxisId="left" name="B2B" fill="#A855F7" radius={[2, 2, 0, 0]} barSize={14} />
-            <Bar dataKey="forecast" yAxisId="left" name="Forecast (Día)" fill="#94A3B8" radius={[2, 2, 0, 0]} barSize={14} />
-            
-            {/* Final Meta Line */}
+            {/* Final Meta Line on right axis */}
             <ReferenceLine 
               y={targetBultos} 
               yAxisId="right"
               stroke="#64748B" 
               strokeWidth={2} 
               strokeDasharray="5 5" 
-              label={{ position: 'top', value: `Meta Final: ${targetBultos}`, fill: '#64748B', fontSize: 10 }}
+              label={{ position: 'insideTopRight', value: `Meta: ${targetBultos.toLocaleString('es-AR')}`, fill: '#64748B', fontSize: 10 }}
             />
-            
-            {/* Lines */}
+
+            {/* Phantom line anchored to right axis — forces Recharts to render the full scale */}
+            <Line
+              dataKey={() => 0}
+              yAxisId="right"
+              stroke="transparent"
+              dot={false}
+              legendType="none"
+              tooltipType="none"
+            />
+
             <Line
               type="monotone"
-              dataKey="totalBultos"
+              dataKey="pickingTotal"
               yAxisId="left"
-              name="Picking Total (Acumulado)"
+              name="Picking Total (Acum.)"
               stroke="#10B981"
               strokeWidth={3}
+              connectNulls={false}
               dot={{ r: 4, fill: '#10B981', strokeWidth: 0 }}
               activeDot={{ r: 6 }}
+              label={{ position: 'top', fill: '#10B981', fontSize: 10, offset: 6, formatter: (v: any) => v != null ? v.toLocaleString('es-AR') : '' }}
             />
+            <Bar dataKey="bultosB2C" yAxisId="left" name="B2C" fill="#3B82F6" radius={[2, 2, 0, 0]} barSize={14} label={{ position: 'top', fill: '#3B82F6', fontSize: 9 }} />
+            <Bar dataKey="bultosB2B" yAxisId="left" name="B2B" fill="#A855F7" radius={[2, 2, 0, 0]} barSize={14} label={{ position: 'top', fill: '#A855F7', fontSize: 9 }} />
+            <Bar dataKey="forecast" yAxisId="left" name="Forecast (Día)" fill="#94A3B8" radius={[2, 2, 0, 0]} barSize={14} label={{ position: 'top', fill: '#94A3B8', fontSize: 9 }} />
           </ComposedChart>
         </ResponsiveContainer>
       </ChartCard>
