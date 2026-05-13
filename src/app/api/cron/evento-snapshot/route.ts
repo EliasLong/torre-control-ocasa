@@ -105,6 +105,15 @@ export async function GET(req: Request) {
       todayKPIs.incidencias
     ]);
 
+    // 5. Save granular pick history (every cron run is a new row)
+    //    This preserves the max pick value even if a later run gets 0.
+    if (todayKPIs.bultosB2C > 0 || todayKPIs.bultosB2B > 0) {
+      await query(`
+        INSERT INTO evento_pick_history (date, bultos_b2c, bultos_b2b, source, captured_at)
+        VALUES ($1, $2, $3, 'cron_hourly', NOW())
+      `, [sqlDate, todayKPIs.bultosB2C, todayKPIs.bultosB2B]);
+    }
+
     return NextResponse.json({ success: true, message: `Snapshot and backup saved for ${sqlDate}` });
   } catch (error: any) {
     console.error('Snapshot error:', error);

@@ -43,6 +43,8 @@ interface EventoKPIsResponse {
   volumenAndreani: number;
   volumenFlotaPropia: number;
   volumenOtros: number;
+  pendientePreparo: number;
+  camionesB2C: number;
   availableDays: string[];
 }
 
@@ -116,8 +118,11 @@ export default function EventoPage() {
   const totalBultos = totals.bultosB2C + totals.bultosB2B;
   const totalTrips = totals.viajesTotal;
   const totalPallets = totals.palletsB2C + totals.palletsB2B;
-  const numDays = data?.availableDays.length || 1;
-  const avgBultosPerDay = Math.round(totalBultos / numDays);
+  const daysWithData = (data?.availableDays || []).filter(dk => {
+    const d = data!.byDay[dk];
+    return (d.bultosB2C + d.bultosB2B) > 0;
+  }).length;
+  const avgBultosPerDay = daysWithData > 0 ? Math.round(totalBultos / daysWithData) : 0;
   const targetBultos = 15888;
 
   // Day-level
@@ -185,7 +190,7 @@ export default function EventoPage() {
       style={{ background: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}
     >
       {/* Header */}
-      <EventoHeader diaEvento={diaEventoStr} avance={avancePercentage} estado={estadoGeneral} targetBultos={targetBultos} bultosIngresados={totalBultos} loadingPedidos={false} />
+      <EventoHeader diaEvento={diaEventoStr} avance={avancePercentage} estado={estadoGeneral} targetBultos={targetBultos} bultosIngresados={totalBultos} loadingPedidos={false} pendientePreparo={data?.pendientePreparo ?? null} />
 
       {/* Refresh + Day selector + Backlog input */}
       <div className="flex items-center justify-between mb-1">
@@ -296,7 +301,7 @@ export default function EventoPage() {
                 accent="purple"
               />
               <EventoCard
-                label="Total viajes"
+                label="Total Camiones Despachados"
                 value={fmt(totalTrips)}
                 subtitle="Acumulado"
                 accent="amber"
@@ -309,10 +314,10 @@ export default function EventoPage() {
                 highlight
               />
               <EventoCard
-                label="Días para completar meta"
-                value={!isBacklogComplete ? (estDaysRemaining > 10 ? "-" : `${estDaysRemaining} días`) : "Completado"}
-                subtitle={!isBacklogComplete ? `Ritmo: ${fmt(avgBultosPerDay)}/día` : "Meta alcanzada"}
-                accent="cyan"
+                label="Días para la meta"
+                value={estDaysRemaining > 0 ? estDaysRemaining : (isBacklogComplete ? "¡Meta!" : "-")}
+                subtitle="Basado en ritmo actual"
+                accent="blue"
               />
             </div>
           </section>

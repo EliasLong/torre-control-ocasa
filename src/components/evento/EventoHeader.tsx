@@ -7,11 +7,10 @@ interface EventoHeaderProps {
   targetBultos?: number;
   bultosIngresados?: number | null;
   loadingPedidos?: boolean;
+  pendientePreparo?: number | null;
 }
 
-export function EventoHeader({ diaEvento, avance, estado, targetBultos = 15688, bultosIngresados, loadingPedidos }: EventoHeaderProps) {
-  const textColorEstado = estado === 'Al Día' ? '#8fbf4c' : (estado === 'Atrasado' ? '#E53935' : '#1A1A1A');
-
+export function EventoHeader({ diaEvento, avance, estado, targetBultos = 15888, bultosIngresados, loadingPedidos, pendientePreparo }: EventoHeaderProps) {
   return (
     <header className="bg-white border border-[#E0E0E0] text-[#1A1A1A] p-4 rounded-xl flex items-center justify-between shadow-sm mb-6">
       <div className="flex items-center gap-4">
@@ -33,10 +32,16 @@ export function EventoHeader({ diaEvento, avance, estado, targetBultos = 15688, 
             {loadingPedidos ? '…' : bultosIngresados != null ? bultosIngresados.toLocaleString('es-AR') : '—'}
           </div>
         </div>
+        <div className="bg-[#FFF7ED] px-4 py-2 rounded-lg border border-[#FED7AA] min-w-[160px]">
+          <div className="text-[#F97316] text-xs mb-1 font-semibold">Pendiente a preparar</div>
+          <div className="text-xl font-bold text-[#C2410C]">
+            {pendientePreparo != null ? pendientePreparo.toLocaleString('es-AR') : '—'}
+          </div>
+        </div>
         <div className="bg-[#F5F5F5] px-4 py-2 rounded-lg border border-[#E0E0E0] min-w-[120px]">
           <div className="text-[#9CA3AF] text-xs mb-1">Avance</div>
           <div className="text-xl font-bold text-[#1A1A1A]">{avance}%</div>
-      </div>
+        </div>
       </div>
     </header>
   );

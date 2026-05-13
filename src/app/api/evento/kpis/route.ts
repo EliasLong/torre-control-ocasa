@@ -348,7 +348,82 @@ export interface EventoKPIsResponse {
   volumenAndreani: number;
   volumenFlotaPropia: number;
   volumenOtros: number;
+  pendientePreparo: number;
+  camionesB2C: number;   // Rows where date=today AND Estado=Liberado from B2C sheets
   availableDays: string[];
+}
+
+// ── Pendiente a Preparar reader ───────────────────────────────────────────
+// Reads the "Cantidad" column (index 28) from both ING tabs and sums all values.
+async function fetchPendientePreparo(): Promise<number> {
+  const fetchTab = async (gid: string): Promise<number> => {
+    const url = csvUrl(SPREADSHEET_INGRESADOS, gid);
+    try {
+      const res = await fetch(url, { next: { revalidate: 0 } });
+      if (!res.ok) return 0;
+      const text = await res.text();
+      const rows = parseCsv(text);
+      let sum = 0;
+      for (let i = 1; i < rows.length; i++) {  // skip header row
+        const cols = rows[i];
+        if (!cols || cols.length < 29) continue;
+        const raw = (cols[28] || '').trim().replace(/[,\s]/g, '');
+        const val = parseFloat(raw);
+        if (!isNaN(val) && val > 0) sum += val;
+      }
+      return sum;
+    } catch {
+      return 0;
+    }
+  };
+
+  const [pl2, pl3] = await Promise.all([
+    fetchTab('0'),
+    fetchTab('1150456694'),
+  ]);
+  return pl2 + pl3;
+}
+
+// ── Camiones B2C despachados hoy reader ───────────────────────────────────
+// Counts rows where date = today (Argentina time) AND Estado = 'Liberado'.
+// gid=2008554442 (PL2): double header, col[0]=FECHA, col[9]=ESTADO
+// gid=0        (PL3): double header, col[0]=Fecha, col[8]=Estado
+async function fetchCamionesB2C(): Promise<number> {
+  const today = getTodayAr();
+  const todayKey = formatDateKey(today);  // "DD/MM"
+  const todayYear = today.getFullYear();
+
+  const fetchTab = async (gid: string, estadoCol: number): Promise<number> => {
+    const url = csvUrl(SPREADSHEET_B2C, gid);
+    try {
+      const res = await fetch(url, { next: { revalidate: 0 } });
+      if (!res.ok) return 0;
+      const text = await res.text();
+      const rows = parseCsv(text);
+      let count = 0;
+      // Double header: skip rows 0 and 1, data starts at row 2
+      for (let i = 2; i < rows.length; i++) {
+        const cols = rows[i];
+        if (!cols || cols.length <= estadoCol) continue;
+        const rawDate = (cols[0] || '').trim();
+        if (!rawDate) continue;
+        const d = parseSheetDate(rawDate);
+        if (!d || d.getFullYear() !== todayYear) continue;
+        if (formatDateKey(d) !== todayKey) continue;
+        const estado = (cols[estadoCol] || '').trim().toLowerCase();
+        if (estado === 'liberado') count++;
+      }
+      return count;
+    } catch {
+      return 0;
+    }
+  };
+
+  const [pl2, pl3] = await Promise.all([
+    fetchTab('2008554442', 9),  // PL2: col[9] = ESTADO
+    fetchTab('0', 8),           // PL3: col[8] = Estado
+  ]);
+  return pl2 + pl3;
 }
 
 export async function getEventoData(): Promise<EventoKPIsResponse> {
@@ -613,11 +688,15 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
       }
     }
 
-    // RECOVERY: Manually injected values for D1 (11/05) as source was lost.
+    // RECOVERY: Manually injected values for D1 and D2 as source was lost or incorrect.
     // This is applied here to ensure it works even if the DB snapshot query fails.
     if (byDay['11/05']) {
-      if (byDay['11/05'].bultosB2C === 0) byDay['11/05'].bultosB2C = 1736;
-      if (byDay['11/05'].bultosB2B === 0) byDay['11/05'].bultosB2B = 1635;
+      byDay['11/05'].bultosB2C = 1736;
+      byDay['11/05'].bultosB2B = 1635;
+    }
+    if (byDay['12/05']) {
+      byDay['12/05'].bultosB2C = 1462;
+      byDay['12/05'].bultosB2B = 1646;
     }
 
     const availableDays = Object.keys(byDay)
@@ -664,7 +743,12 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
       }
     );
 
-    const response: EventoKPIsResponse = { byDay, totals, availableDays, volumenRetiMeli, volumenAndreani, volumenFlotaPropia, volumenOtros };
+    const [pendientePreparo, camionesB2C] = await Promise.all([
+      fetchPendientePreparo(),
+      fetchCamionesB2C(),
+    ]);
+
+    const response: EventoKPIsResponse = { byDay, totals, availableDays, volumenRetiMeli, volumenAndreani, volumenFlotaPropia, volumenOtros, pendientePreparo, camionesB2C };
     return response;
   } catch (err: any) {
     console.error('[evento/kpis]', err);
