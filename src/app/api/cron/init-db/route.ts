@@ -61,6 +61,24 @@ export async function GET() {
       );
     `);
 
+    // ── Resultados finales oficiales (importados desde Google Sheet "Acumulado Evento") ──
+    // Se cargan a las 4AM hora Argentina (7AM UTC) con el picking definitivo del día anterior.
+    await query(`
+      CREATE TABLE IF NOT EXISTS evento_resultados_finales (
+          id          BIGSERIAL   PRIMARY KEY,
+          date        DATE        NOT NULL UNIQUE,
+          pick_b2c    INTEGER     NOT NULL DEFAULT 0,
+          pick_b2b    INTEGER     NOT NULL DEFAULT 0,
+          source      VARCHAR(50) NOT NULL DEFAULT 'google_sheet_acumulado',
+          imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    await query(`
+      CREATE INDEX IF NOT EXISTS idx_resultados_finales_date
+          ON evento_resultados_finales (date DESC);
+    `);
+
     return NextResponse.json({ success: true, message: 'All tables created/migrated successfully' });
   } catch (error: any) {
     return NextResponse.json({ error: String(error), stack: error.stack }, { status: 500 });

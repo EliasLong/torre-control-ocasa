@@ -5,7 +5,7 @@ import { EventoHeader } from '@/components/evento/EventoHeader';
 import { DayTabs } from '@/components/evento/DayTabs';
 import { EventoCard } from '@/components/evento/EventoCard';
 import { EventoCharts } from '@/components/evento/EventoCharts';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, CheckCircle2, Radio } from 'lucide-react';
 import { usePedidosIngresados } from '@/hooks/usePedidosIngresados';
 
 // ── Types matching the API response ────────────────────────────────────────
@@ -48,6 +48,16 @@ interface EventoKPIsResponse {
   availableDays: string[];
 }
 
+interface ResultadoFinal {
+  date: string;
+  dateKey: string;  // DD/MM
+  pick_b2c: number;
+  pick_b2b: number;
+  total: number;
+  source: string;
+  imported_at: string;
+}
+
 // ── Helper to format numbers ───────────────────────────────────────────────
 function fmt(n: number): string {
   return n.toLocaleString('es-AR');
@@ -64,14 +74,18 @@ export default function EventoPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeDay, setActiveDay] = useState<string>('');
+  const [resultadosFinales, setResultadosFinales] = useState<ResultadoFinal[]>([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/evento/kpis', { cache: 'no-store' });
-      if (!res.ok) throw new Error('Error al obtener datos');
-      const json: EventoKPIsResponse = await res.json();
+      const [kpisRes, rfRes] = await Promise.all([
+        fetch('/api/evento/kpis', { cache: 'no-store' }),
+        fetch('/api/evento/resultados-finales', { cache: 'no-store' }),
+      ]);
+      if (!kpisRes.ok) throw new Error('Error al obtener datos');
+      const json: EventoKPIsResponse = await kpisRes.json();
       setData(json);
       // Auto-select today if available, otherwise last day with data
       if (!activeDay && json.availableDays.length > 0) {
@@ -81,6 +95,10 @@ export default function EventoPage() {
         } else {
           setActiveDay(json.availableDays[json.availableDays.length - 1]);
         }
+      }
+      if (rfRes.ok) {
+        const rfJson = await rfRes.json();
+        setResultadosFinales(rfJson.resultados || []);
       }
     } catch (e: any) {
       setError(e.message || 'Error desconocido');
@@ -321,6 +339,141 @@ export default function EventoPage() {
               />
             </div>
           </section>
+
+          {/* ── RESULTADOS FINALES OFICIALES ── */}
+          {resultadosFinales.length > 0 && (
+            <section className="mb-5">
+              <h2
+                className="text-[10px] font-bold uppercase tracking-widest mb-3"
+                style={{ color: '#6B7280' }}
+              >
+                Resultados Finales Oficiales — Pick por Día
+              </h2>
+              <div
+                style={{
+                  background: '#fff',
+                  borderRadius: 12,
+                  border: '1px solid #E5E7EB',
+                  overflow: 'hidden',
+                }}
+              >
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+                      <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, color: '#374151', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Día</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, color: '#374151', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fecha</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 700, color: '#7C3AED', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pick B2C</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 700, color: '#7C3AED', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pick B2B</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 700, color: '#111827', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 700, color: '#374151', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data?.availableDays || []).map((dk, i) => {
+                      const rf = resultadosFinales.find(r => r.dateKey === dk);
+                      const liveDay = data?.byDay[dk];
+                      const liveB2C = liveDay?.bultosB2C || 0;
+                      const liveB2B = liveDay?.bultosB2B || 0;
+                      const isOficial = !!rf;
+                      const b2c   = isOficial ? rf!.pick_b2c : liveB2C;
+                      const b2b   = isOficial ? rf!.pick_b2b : liveB2B;
+                      const total = b2c + b2b;
+                      return (
+                        <tr
+                          key={dk}
+                          style={{
+                            borderBottom: i < (data?.availableDays.length || 0) - 1 ? '1px solid #F3F4F6' : 'none',
+                            background: isOficial ? 'rgba(124,58,237,0.03)' : 'transparent',
+                          }}
+                        >
+                          <td style={{ padding: '10px 16px', color: '#6B7280', fontWeight: 600 }}>D{i + 1}</td>
+                          <td style={{ padding: '10px 16px', color: '#374151', fontWeight: 600 }}>{dk}</td>
+                          <td style={{ padding: '10px 16px', textAlign: 'right', color: '#7C3AED', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                            {b2c.toLocaleString('es-AR')}
+                          </td>
+                          <td style={{ padding: '10px 16px', textAlign: 'right', color: '#7C3AED', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                            {b2b.toLocaleString('es-AR')}
+                          </td>
+                          <td style={{ padding: '10px 16px', textAlign: 'right', color: '#111827', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
+                            {total.toLocaleString('es-AR')}
+                          </td>
+                          <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                            {isOficial ? (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  background: 'rgba(16,185,129,0.1)',
+                                  color: '#059669',
+                                  borderRadius: 20,
+                                  padding: '2px 10px',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  letterSpacing: '0.04em',
+                                }}
+                              >
+                                <CheckCircle2 size={11} />
+                                OFICIAL
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  background: 'rgba(245,158,11,0.1)',
+                                  color: '#D97706',
+                                  borderRadius: 20,
+                                  padding: '2px 10px',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  letterSpacing: '0.04em',
+                                }}
+                              >
+                                <Radio size={11} />
+                                EN VIVO
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ borderTop: '2px solid #E5E7EB', background: '#F9FAFB' }}>
+                      <td colSpan={2} style={{ padding: '10px 16px', fontWeight: 800, color: '#111827', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>TOTAL EVENTO</td>
+                      <td style={{ padding: '10px 16px', textAlign: 'right', color: '#7C3AED', fontWeight: 800, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
+                        {(
+                          resultadosFinales.length > 0
+                            ? resultadosFinales.reduce((s, r) => s + r.pick_b2c, 0)
+                            : (data?.totals.bultosB2C || 0)
+                        ).toLocaleString('es-AR')}
+                      </td>
+                      <td style={{ padding: '10px 16px', textAlign: 'right', color: '#7C3AED', fontWeight: 800, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
+                        {(
+                          resultadosFinales.length > 0
+                            ? resultadosFinales.reduce((s, r) => s + r.pick_b2b, 0)
+                            : (data?.totals.bultosB2B || 0)
+                        ).toLocaleString('es-AR')}
+                      </td>
+                      <td style={{ padding: '10px 16px', textAlign: 'right', color: '#111827', fontWeight: 800, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
+                        {(
+                          resultadosFinales.length > 0
+                            ? resultadosFinales.reduce((s, r) => s + r.pick_b2c + r.pick_b2b, 0)
+                            : ((data?.totals.bultosB2C || 0) + (data?.totals.bultosB2B || 0))
+                        ).toLocaleString('es-AR')}
+                      </td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <p style={{ fontSize: 10, color: '#9CA3AF', marginTop: 6, textAlign: 'right' }}>
+                Los resultados OFICIALES se importan automáticamente a las 4AM desde el sheet "Acumulado Evento".
+              </p>
+            </section>
+          )}
 
           {/* ── CHARTS ── */}
           <EventoCharts

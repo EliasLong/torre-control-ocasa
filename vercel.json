@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/evento-snapshot",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/import-resultados-finales",
+      "schedule": "0 7 * * *"
     }
   ]
 }

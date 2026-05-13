@@ -291,7 +291,10 @@ export async function fetchSheetRows(
     else if (type === 'B2B') row = parseB2BRow(cols, gid);
     else if (type === 'DEV') {
       const date = parseSheetDate(cols[0]);
-      const quantity = Math.round(parseFloat(cols[5])) || 0;
+      // The user wants to count records based on the REMITO column (index 3),
+      // counting each row individually (even if duplicates exist).
+      const remito = (cols[3] || '').trim();
+      const quantity = remito !== '' ? 1 : 0;
       row = { date, dispatchDate: null, bultos: quantity, pallets: 0 };
     } else if (type === 'INC') {
       row = parseIncidenciasRow(cols);
@@ -426,6 +429,47 @@ async function fetchCamionesB2C(): Promise<number> {
   return pl2 + pl3;
 }
 
+// ── Official Results Sheet reader (Acumulado Evento) ──────────────────────
+async function fetchOfficialResultsSheet(): Promise<Record<string, { b2c: number, b2b: number }>> {
+  const SPREADSHEET_ID = '15T-YKuVXHs5XAX6hanAM3HlilEjbW4ODcwxmRTtHgFk';
+  const GID = '1670433793';
+  const url = csvUrl(SPREADSHEET_ID, GID);
+  
+  try {
+    const res = await fetch(url, { next: { revalidate: 0 } });
+    if (!res.ok) return {};
+    const text = await res.text();
+    const rows = parseCsv(text);
+    const results: Record<string, { b2c: number, b2b: number }> = {};
+
+    for (let i = 1; i < rows.length; i++) {
+      const cols = rows[i];
+      if (!cols || cols.length < 3) continue;
+
+      const rawDate = (cols[0] || '').trim();
+      const rawB2B  = (cols[1] || '').replace(/[,\s]/g, '');
+      const rawB2C  = (cols[2] || '').replace(/[,\s]/g, '');
+
+      if (rawDate.toLowerCase().includes('fecha') || rawDate === '') continue;
+
+      // Parse date to DD/MM format
+      const match = rawDate.match(/^(\d{1,2})\/(\d{1,2})/);
+      if (!match) continue;
+      const key = `${match[1].padStart(2, '0')}/${match[2].padStart(2, '0')}`;
+
+      const b2b = parseInt(rawB2B, 10) || 0;
+      const b2c = parseInt(rawB2C, 10) || 0;
+
+      if (b2b > 0 || b2c > 0) {
+        results[key] = { b2c, b2b };
+      }
+    }
+    return results;
+  } catch {
+    return {};
+  }
+}
+
 export async function getEventoData(): Promise<EventoKPIsResponse> {
   try {
     const EVENT_DAYS: string[] = [];
@@ -443,7 +487,10 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
       EVENT_DAYS_YYYY_MM_DD.push(`${yyyy}-${mm}-${dd}`);
     }
 
-    const [pl2b2c, pl3b2c, pl2b2b, pl3b2b, pl2dev, pl3dev, pl2ing, pl3ing, incidencias, pickingMovs, ...tripCountsArr] = await Promise.all([
+    const [
+      pl2b2c, pl3b2c, pl2b2b, pl3b2b, pl2dev, pl3dev, pl2ing, pl3ing, incidencias, pickingMovs, 
+      ...rest
+    ] = await Promise.all([
       fetchSheetRows(SHEETS.PL2_B2C.id, SHEETS.PL2_B2C.gid, 'B2C'),
       fetchSheetRows(SHEETS.PL3_B2C.id, SHEETS.PL3_B2C.gid, 'B2C'),
       fetchSheetRows(SHEETS.PL2_B2B.id, SHEETS.PL2_B2B.gid, 'B2B'),
@@ -456,7 +503,12 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
       getMovimientosPorFechas(EVENT_DAYS_YYYY_MM_DD),
       // Fetch trip counts from all 4 trip sheets in parallel
       ...TRIP_SHEETS.map(s => fetchTripCounts(s, EVENT_DAYS)),
+      fetchOfficialResultsSheet(),
     ]);
+
+    const sheetOfficialResults = rest.pop() as Record<string, { b2c: number, b2b: number }>;
+    const tripCountsArr = rest as Record<string, number>[];
+
 
     // Merge trip counts from all 4 sheets into a single map
     const mergedTripCounts: Record<string, number> = {};
@@ -688,17 +740,16 @@ export async function getEventoData(): Promise<EventoKPIsResponse> {
       }
     }
 
-    // RECOVERY: Manually injected values for D1 and D2 as source was lost or incorrect.
-    // This is applied here to ensure it works even if the DB snapshot query fails.
-    if (byDay['11/05']) {
-      byDay['11/05'].bultosB2C = 1736;
-      byDay['11/05'].bultosB2B = 1635;
+    // ── MERGE LIVE OFFICIAL SHEET (Acumulado Evento) ─────────────────────────
+    // This gives immediate priority to changes made in the sheet,
+    // even before any automated processes run.
+    for (const [key, res] of Object.entries(sheetOfficialResults)) {
+      if (byDay[key]) {
+        byDay[key].bultosB2C = res.b2c;
+        byDay[key].bultosB2B = res.b2b;
+      }
     }
-    if (byDay['12/05']) {
-      byDay['12/05'].bultosB2C = 1462;
-      byDay['12/05'].bultosB2B = 1646;
-    }
-
+    
     const availableDays = Object.keys(byDay)
       .filter((day) => EVENT_DAYS.includes(day))
       .sort((a, b) => {
