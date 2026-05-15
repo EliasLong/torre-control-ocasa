@@ -24,7 +24,7 @@ function parseRowToMovimiento(row: string[], org: 'PL2' | 'PL3'): MovimientoRaw 
   const fecha = parseSheetDate(row[0]);
   if (!fecha) return null;
 
-  const turnoIndex = org === 'PL2' ? 15 : 18;
+  const turnoIndex = org === 'PL2' ? 15 : 15;
   const turno = (row[turnoIndex] || '').trim().toUpperCase();
 
   if (!TURNOS_VALIDOS.includes(turno)) return null;
@@ -45,8 +45,8 @@ function parseRowToMovimiento(row: string[], org: 'PL2' | 'PL3'): MovimientoRaw 
     tipoTransaccion: (row[13] || '').trim(),
     usuario: (row[14] || '').trim(),
     turno,
-    lpnContenido: (row[16] || '').trim(),
-    cliente: (row[19] || '').trim().toUpperCase(),
+    lpnContenido: (row[org === 'PL2' ? 16 : 17] || '').trim(),
+    cliente: (row[org === 'PL2' ? 19 : 16] || '').trim().toUpperCase(),
   };
 }
 
