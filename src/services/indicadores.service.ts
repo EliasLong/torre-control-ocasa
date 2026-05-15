@@ -51,6 +51,12 @@ function parseRowToMovimiento(row: string[], org: 'PL2' | 'PL3', indices: any): 
 function getColumnIndices(header: string[]) {
   const find = (names: string[]) => {
     const hUpper = header.map(h => h.toUpperCase().trim());
+    // Try exact match first
+    for (const name of names) {
+      const idx = hUpper.findIndex(h => h === name.toUpperCase());
+      if (idx !== -1) return idx;
+    }
+    // Fallback to includes
     for (const name of names) {
       const idx = hUpper.findIndex(h => h.includes(name.toUpperCase()));
       if (idx !== -1) return idx;
