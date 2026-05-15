@@ -10,7 +10,7 @@ interface DayTabsProps {
 
 export function DayTabs({ days, activeDay, onSelect }: DayTabsProps) {
   return (
-    <div className="flex items-center gap-2 flex-wrap mb-5">
+    <div className="flex items-center gap-2 overflow-x-auto pb-2 flex-nowrap scrollbar-hide mb-5">
       {days.map((day) => {
         const isActive = day.id === activeDay;
         return (

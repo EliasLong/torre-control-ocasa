@@ -200,10 +200,9 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
               {...axisProps} 
               yAxisId="right" 
               orientation="right"
-              domain={[0, targetBultos]}
-              ticks={[0, 5000, 10000, 15000, targetBultos]}
+              domain={[0, (dataMax: number) => Math.max(dataMax, targetBultos + 1000)]}
               tickFormatter={(v) => v.toLocaleString('es-AR')}
-              label={{ value: 'Bultos', angle: 90, position: 'insideRight', offset: 10, style: { fill: '#6B7280', fontSize: 10 } }} 
+              label={{ value: 'Acumulado', angle: 90, position: 'insideRight', offset: 10, style: { fill: '#6B7280', fontSize: 10 } }} 
             />
             <Tooltip {...tooltipStyle} />
             
@@ -214,23 +213,13 @@ export function EventoCharts({ chartData, targetBultos, volumenRetiMeli, volumen
               stroke="#64748B" 
               strokeWidth={2} 
               strokeDasharray="5 5" 
-              label={{ position: 'insideTopRight', value: `Meta: ${targetBultos.toLocaleString('es-AR')}`, fill: '#64748B', fontSize: 10 }}
-            />
-
-            {/* Phantom line anchored to right axis — forces Recharts to render the full scale */}
-            <Line
-              dataKey={() => 0}
-              yAxisId="right"
-              stroke="transparent"
-              dot={false}
-              legendType="none"
-              tooltipType="none"
+              label={{ position: 'insideTopRight', value: `Meta: ${targetBultos.toLocaleString('es-AR')}`, fill: '#64748B', fontSize: 10, offset: 10 }}
             />
 
             <Line
               type="monotone"
               dataKey="pickingTotal"
-              yAxisId="left"
+              yAxisId="right"
               name="Picking Total (Acum.)"
               stroke="#10B981"
               strokeWidth={3}
