@@ -20,33 +20,61 @@ function parseNumericField(raw: string | undefined): number {
   return parseFloat(raw.replace(',', '.')) || 0;
 }
 
-function parseRowToMovimiento(row: string[], org: 'PL2' | 'PL3'): MovimientoRaw | null {
-  const fecha = parseSheetDate(row[0]);
+function parseRowToMovimiento(row: string[], org: 'PL2' | 'PL3', indices: any): MovimientoRaw | null {
+  const fecha = parseSheetDate(row[indices.fecha]);
   if (!fecha) return null;
 
-  const turnoIndex = org === 'PL2' ? 15 : 15;
-  const turno = (row[turnoIndex] || '').trim().toUpperCase();
-
+  const turno = (row[indices.turno] || '').trim().toUpperCase();
   if (!TURNOS_VALIDOS.includes(turno)) return null;
 
   return {
     fecha,
     org,
-    articulo: cleanArticulo(row[2]),
-    descripcion: row[3] || '',
-    cantidad: parseNumericField(row[4]),
-    costo: parseNumericField(row[5]),
-    subinventario: (row[7] || '').trim().toUpperCase(),
-    localizador: (row[8] || '').trim(),
-    subTransferencia: (row[9] || '').trim().toUpperCase(),
-    lpnTransferido: (row[10] || '').trim(),
-    tipoOrigen: (row[11] || '').trim(),
-    accion: (row[12] || '').trim(),
-    tipoTransaccion: (row[13] || '').trim(),
-    usuario: (row[14] || '').trim(),
+    articulo: cleanArticulo(row[indices.articulo]),
+    descripcion: row[indices.descripcion] || '',
+    cantidad: parseNumericField(row[indices.cantidad]),
+    costo: parseNumericField(row[indices.costo]),
+    subinventario: (row[indices.subinventario] || '').trim().toUpperCase(),
+    localizador: (row[indices.localizador] || '').trim(),
+    subTransferencia: (row[indices.subTransferencia] || '').trim().toUpperCase(),
+    lpnTransferido: (row[indices.lpnTransferido] || '').trim(),
+    tipoOrigen: (row[indices.tipoOrigen] || '').trim(),
+    accion: (row[indices.accion] || '').trim(),
+    tipoTransaccion: (row[indices.tipoTransaccion] || '').trim(),
+    usuario: (row[indices.usuario] || '').trim(),
     turno,
-    lpnContenido: (row[org === 'PL2' ? 16 : 17] || '').trim(),
-    cliente: (row[org === 'PL2' ? 19 : 16] || '').trim().toUpperCase(),
+    lpnContenido: (row[indices.lpnContenido] || '').trim(),
+    cliente: (row[indices.cliente] || '').trim().toUpperCase(),
+  };
+}
+
+function getColumnIndices(header: string[]) {
+  const find = (names: string[]) => {
+    const hUpper = header.map(h => h.toUpperCase().trim());
+    for (const name of names) {
+      const idx = hUpper.findIndex(h => h.includes(name.toUpperCase()));
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  };
+
+  return {
+    fecha: find(['FECHA DE TRANSACCION', 'FECHA']),
+    articulo: find(['ARTICULO']),
+    descripcion: find(['DESCRIPCION']),
+    cantidad: find(['CANTIDAD']),
+    costo: find(['COSTO']),
+    subinventario: find(['SUBINVENTARIO']),
+    localizador: find(['LOCALIZADOR']),
+    subTransferencia: find(['SUBINVENTARIO TRANSFERENCIA', 'SUB TRANSFERENCIA']),
+    lpnTransferido: find(['LPN TRANSFERIDO']),
+    tipoOrigen: find(['TIPO DE ORIGEN']),
+    accion: find(['ACCION']),
+    tipoTransaccion: find(['TIPO DE TRANSACCION']),
+    usuario: find(['USUARIO']),
+    turno: find(['TURNO']),
+    lpnContenido: find(['LPN CONTENIDO']),
+    cliente: find(['CLIENTE']),
   };
 }
 
@@ -54,50 +82,33 @@ function parseRowToMovimiento(row: string[], org: 'PL2' | 'PL3'): MovimientoRaw 
 
 export function isPicking(mov: MovimientoRaw): boolean {
   return (
-    mov.tipoTransaccion.toLowerCase() === 'sales order pick' &&
-    mov.subTransferencia === 'PORTONES'
+    mov.tipoTransaccion.toLowerCase().includes('sales order pick') &&
+    mov.subTransferencia.toUpperCase().includes('PORTONES')
   );
 }
 
 export function isRecepcion(mov: MovimientoRaw): boolean {
   return (
-    mov.subinventario === 'RECEPCION' &&
-    mov.tipoTransaccion.toLowerCase() === 'direct org transfer sin remito'
+    mov.subinventario.toUpperCase().includes('RECEPCION') &&
+    mov.tipoTransaccion.toLowerCase().includes('direct org transfer sin remito')
   );
 }
 
 export function isRMA(mov: MovimientoRaw): boolean {
   return (
-    mov.subinventario === 'RECEPCION' &&
-    mov.tipoTransaccion.toLowerCase() === 'rma receipt'
+    mov.subinventario.toUpperCase().includes('RECEPCION') &&
+    mov.tipoTransaccion.toLowerCase().includes('rma receipt')
   );
 }
 
 export function isMovimientoTransfer(mov: MovimientoRaw): boolean {
-  return mov.tipoTransaccion.toLowerCase() === 'subinventory transfer';
+  return mov.tipoTransaccion.toLowerCase().includes('subinventory transfer');
 }
 
 // --- Public API ---
 
 export async function getMovimientosDelDia(fecha: string): Promise<MovimientoRaw[]> {
-  const [pl2Rows, pl3Rows] = await Promise.all([
-    fetchSheetRows(SHEET_MOVIMIENTOS, 'PL2'),
-    fetchSheetRows(SHEET_MOVIMIENTOS, 'PL3'),
-  ]);
-
-  const movimientos: MovimientoRaw[] = [];
-
-  for (let i = 1; i < pl2Rows.length; i++) {
-    const mov = parseRowToMovimiento(pl2Rows[i], 'PL2');
-    if (mov && mov.fecha === fecha) movimientos.push(mov);
-  }
-
-  for (let i = 1; i < pl3Rows.length; i++) {
-    const mov = parseRowToMovimiento(pl3Rows[i], 'PL3');
-    if (mov && mov.fecha === fecha) movimientos.push(mov);
-  }
-
-  return movimientos;
+  return getMovimientosPorFechas([fecha]);
 }
 
 export async function getMovimientosPorFechas(fechas: string[]): Promise<MovimientoRaw[]> {
@@ -109,14 +120,20 @@ export async function getMovimientosPorFechas(fechas: string[]): Promise<Movimie
   const setFechas = new Set(fechas);
   const movimientos: MovimientoRaw[] = [];
 
-  for (let i = 1; i < pl2Rows.length; i++) {
-    const mov = parseRowToMovimiento(pl2Rows[i], 'PL2');
-    if (mov && setFechas.has(mov.fecha)) movimientos.push(mov);
+  if (pl2Rows.length > 0) {
+    const idx = getColumnIndices(pl2Rows[0]);
+    for (let i = 1; i < pl2Rows.length; i++) {
+      const mov = parseRowToMovimiento(pl2Rows[i], 'PL2', idx);
+      if (mov && setFechas.has(mov.fecha)) movimientos.push(mov);
+    }
   }
 
-  for (let i = 1; i < pl3Rows.length; i++) {
-    const mov = parseRowToMovimiento(pl3Rows[i], 'PL3');
-    if (mov && setFechas.has(mov.fecha)) movimientos.push(mov);
+  if (pl3Rows.length > 0) {
+    const idx = getColumnIndices(pl3Rows[0]);
+    for (let i = 1; i < pl3Rows.length; i++) {
+      const mov = parseRowToMovimiento(pl3Rows[i], 'PL3', idx);
+      if (mov && setFechas.has(mov.fecha)) movimientos.push(mov);
+    }
   }
 
   return movimientos;
