@@ -186,7 +186,7 @@ export default function EventoPage() {
 
   const activeDayIndex = data?.availableDays.indexOf(activeDay) ?? 0;
   const diaEventoStr = (activeDayIndex + 1).toString();
-  const avancePercentage = Math.min(100, Math.round((totalBultos / targetBultos) * 100));
+  const avancePercentage = Math.round((totalBultos / targetBultos) * 100);
   const estadoGeneral = 'Al Día'; // Simplified
 
   return (
@@ -265,7 +265,7 @@ export default function EventoPage() {
                   <EventoCard label="Pick. B2B Total" value={fmt(totals.bultosB2B)} subtitle="Acumulado" accent="purple" />
                   <EventoCard label="Total Camiones Despachados" value={fmt(totalTrips)} subtitle="Acumulado" accent="amber" />
                   <EventoCard
-                    label={isBacklogComplete ? "Exceso de Forecast" : "Forecast Pendiente"}
+                    label="Forecast Pendiente"
                     value={fmt(isBacklogComplete ? (totalBultos - BACKLOG_TARGET) : backlogDiff)}
                     subtitle={isBacklogComplete ? "Pedidos superados" : `Meta: ${fmt(BACKLOG_TARGET)}`}
                     accent={isBacklogComplete ? "green" : "red"}
