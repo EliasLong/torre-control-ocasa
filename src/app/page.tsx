@@ -1,2 +1,2 @@
 import { redirect } from 'next/navigation';
-export default function RootPage() { redirect('/evento'); }
+export default function RootPage() { redirect('/torre-control'); }

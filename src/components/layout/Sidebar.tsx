@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
     BarChart3, CalendarDays, DollarSign, TrendingDown, Grid3X3, Settings,
     LogOut, FileSpreadsheet, Truck, AlertTriangle, Wrench, ChevronDown,
-    ExternalLink, Package, ClipboardList, CalendarCheck
+    ExternalLink, Package, ClipboardList, CalendarCheck, Warehouse
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { canAccessTab, isAdmin } from '@/lib/auth';
@@ -30,20 +30,21 @@ interface ToolItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-    // { href: '/operacional', label: 'Operacional', icon: BarChart3, tab: 'operacional' },
-    // { href: '/indicadores-diarios', label: 'Indicadores Diarios', icon: CalendarDays, tab: 'indicadores-diarios' },
-    // { href: '/financiero', label: 'Financiero', icon: DollarSign, tab: 'financiero' },
-    // { href: '/merma', label: 'Merma', icon: TrendingDown, tab: 'merma' },
-    // { href: '/abc-xyz', label: 'ABC-XYZ', icon: Grid3X3, tab: 'abc-xyz' },
-    // { href: '/reportes', label: 'Reportes', icon: FileSpreadsheet, tab: 'reportes' },
-    // { href: '/tracking', label: 'Tracking', icon: Truck, tab: 'tracking' },
+    { href: '/torre-control', label: 'Torre de Control', icon: Warehouse, tab: 'torre-control' },
+    { href: '/operacional', label: 'Operacional', icon: BarChart3, tab: 'operacional' },
+    { href: '/indicadores-diarios', label: 'Indicadores Diarios', icon: CalendarDays, tab: 'indicadores-diarios' },
+    { href: '/financiero', label: 'Financiero', icon: DollarSign, tab: 'financiero' },
+    { href: '/merma', label: 'Merma', icon: TrendingDown, tab: 'merma' },
+    { href: '/abc-xyz', label: 'ABC-XYZ', icon: Grid3X3, tab: 'abc-xyz' },
+    { href: '/reportes', label: 'Reportes', icon: FileSpreadsheet, tab: 'reportes' },
+    { href: '/tracking', label: 'Tracking', icon: Truck, tab: 'tracking' },
     { href: '/evento', label: 'Evento', icon: CalendarCheck, tab: 'evento' },
 ];
 
 const TOOL_ITEMS: ToolItem[] = [
-    // { label: 'Incidencias', icon: AlertTriangle, href: '/herramientas/incidencias', tab: 'incidencias' },
-    // { label: 'Dock Manager', icon: Package, href: 'https://dock-manager-ocasa-pilar.up.railway.app/operador', external: true },
-    // { label: 'Inventario', icon: ClipboardList, href: 'https://inventario-app-umber.vercel.app', external: true },
+    { label: 'Incidencias', icon: AlertTriangle, href: '/herramientas/incidencias', tab: 'incidencias' },
+    { label: 'Dock Manager', icon: Package, href: 'https://dock-manager-ocasa-pilar.up.railway.app/operador', external: true },
+    { label: 'Inventario', icon: ClipboardList, href: 'https://inventario-app-umber.vercel.app', external: true },
 ];
 
 export function Sidebar() {
