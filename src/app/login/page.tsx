@@ -28,7 +28,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push('/torre-control');
+    router.push('/evento');
   }
 
   return (
